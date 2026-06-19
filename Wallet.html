@@ -3,15 +3,52 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Wallet</title>
+    <title>My Wallet - Personal Ledger</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-    <script>
-        if (localStorage.getItem('theme') === 'dark') {
-            document.documentElement.classList.add('dark');
-        }
+    <!-- ✅ FIREBASE SDK -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+        import { getFirestore, doc, setDoc, onSnapshot, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+        // ============================================================
+        // 🔴 REPLACE THESE WITH YOUR REAL FIREBASE PROJECT CONFIG
+        //    Go to: https://console.firebase.google.com
+        //    Project Settings → Your Apps → Web App → Config
+        // ============================================================
+        const firebaseConfig = {
+         apiKey: "AIzaSyA5396OxQ5ISHRQ9e_o7gM3Lvt9m9vVj_M",
+         authDomain: "my-wallet-a653c.firebaseapp.com",
+         projectId: "my-wallet-a653c",
+         storageBucket: "my-wallet-a653c.firebasestorage.app",
+         messagingSenderId: "330800076603",
+         appId: "1:330800076603:web:fa259b1ef659ab7d76c91e",
+         measurementId: "G-L2RPF60HNL"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const DATA_DOC = doc(db, "wallet", "shared_data");
+
+        // Expose to global scope FIRST (sync)
+        window._db = db;
+        window._dataDoc = DATA_DOC;
+        window._setDoc = setDoc;
+        window._onSnapshot = onSnapshot;
+        window._getDoc = getDoc;
+
+        // Apply saved theme (async, but non-blocking)
+        try {
+            const snap = await getDoc(DATA_DOC);
+            if (snap.exists() && snap.data().theme === 'dark') {
+                document.documentElement.classList.add('dark');
+            }
+        } catch(e) {}
+
+        // Signal ready LAST — after all setup done
+        window._firebaseReady = true;
     </script>
     <style>
         .dark body { background-color: #0f172a; color: #f1f5f9; }
@@ -34,7 +71,11 @@
                 <button onclick="toggleDarkMode()" class="text-emerald-100 hover:text-white text-lg" title="Toggle Theme">
                     <i id="theme-icon" class="fa-solid fa-moon"></i>
                 </button>
-                <span class="text-xs bg-emerald-800 px-3 py-1 rounded-full text-emerald-100">SANJU P R</span>
+                <div id="fb-badge" class="flex items-center gap-1.5 bg-amber-500/20 border border-amber-400/40 text-amber-300 px-2.5 py-1 rounded-full text-[10px] font-bold">
+                    <span id="fb-dot" class="w-2 h-2 rounded-full bg-amber-400 animate-pulse inline-block"></span>
+                    <span id="fb-text">Loading...</span>
+                </div>
+                <span class="text-xs bg-emerald-800 px-3 py-1 rounded-full text-emerald-100">Advanced Personal Ledger</span>
             </div>
         </div>
     </nav>
@@ -272,33 +313,124 @@
     <div id="statement-image-template" class="absolute left-[-9999px] top-[-9999px] w-[1000px] bg-slate-950 p-10 rounded-3xl"></div>
 
     <script>
-        // Global Datastores declared explicitly
+        // ============================================================
+        // 🔥 FIREBASE-POWERED DATA LAYER
+        // Data is now synced in real-time across ALL devices/phones
+        // ============================================================
+
+        // Global Datastores
         let txs = [];
         let friends = [];
         let emis = [];
         let cards = [];
-        // Track closed warning elements dynamically within current session lifecycle
         let dismissedAlertKeys = [];
+        let _isSyncing = false; // prevent echo-loop when we receive our own writes
 
-        // --- 31-DAY AUTOMATIC RETENTION AND EXPIRY SYSTEM ---
-        function purgeExpiredData() {
-            const currentTimestamp = Date.now();
-            const maxRetentionPeriodMs = 31 * 24 * 60 * 60 * 1000;
+        // ── Single Firebase Status Badge ────────────────────────────
+        // States: loading → live   (or error)
+        function setFbStatus(state) {
+            const badge = document.getElementById('fb-badge');
+            const dot   = document.getElementById('fb-dot');
+            const text  = document.getElementById('fb-text');
+            if (!badge || !dot || !text) return;
 
-            let localTxs = JSON.parse(localStorage.getItem('mx_txs')) || [];
-            let localFriends = JSON.parse(localStorage.getItem('mx_friends')) || [];
-            let localEmis = JSON.parse(localStorage.getItem('mx_emis')) || [];
-            let localCards = JSON.parse(localStorage.getItem('mx_cards')) || [];
+            const cfg = {
+                loading: { badge: 'flex items-center gap-1.5 bg-amber-500/20 border border-amber-400/40 text-amber-300 px-2.5 py-1 rounded-full text-[10px] font-bold', dot: 'w-2 h-2 rounded-full bg-amber-400 animate-pulse inline-block', label: 'Loading...' },
+                live:    { badge: 'flex items-center gap-1.5 bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 px-2.5 py-1 rounded-full text-[10px] font-bold', dot: 'w-2 h-2 rounded-full bg-emerald-400 inline-block', label: '● Live' },
+                error:   { badge: 'flex items-center gap-1.5 bg-rose-500/20 border border-rose-400/40 text-rose-300 px-2.5 py-1 rounded-full text-[10px] font-bold', dot: 'w-2 h-2 rounded-full bg-rose-400 animate-pulse inline-block', label: 'Offline' }
+            };
+            const c = cfg[state] || cfg.loading;
+            badge.className = c.badge;
+            dot.className   = c.dot;
+            text.textContent = c.label;
+        }
 
-            txs = localTxs.filter(item => (currentTimestamp - item.id) < maxRetentionPeriodMs);
-            friends = localFriends.filter(item => (currentTimestamp - item.id) < maxRetentionPeriodMs);
-            emis = localEmis.filter(item => (currentTimestamp - item.id) < maxRetentionPeriodMs);
-            cards = localCards.filter(item => (currentTimestamp - item.id) < maxRetentionPeriodMs);
+        // Aliases used elsewhere
+        function setConnectionStatus(state) { if (state === 'connected') setFbStatus('live'); else if (state === 'error') setFbStatus('error'); else setFbStatus('loading'); }
+        function setSyncStatus(state) { /* no-op — single badge handles it */ }
+        function showSyncStatus(msg, color) { /* no-op */ }
 
-            localStorage.setItem('mx_txs', JSON.stringify(txs));
-            localStorage.setItem('mx_friends', JSON.stringify(friends));
-            localStorage.setItem('mx_emis', JSON.stringify(emis));
-            localStorage.setItem('mx_cards', JSON.stringify(cards));
+        // --- SAVE ALL DATA TO FIRESTORE ---
+        async function saveToFirestore() {
+            if (!window._firebaseReady || !window._dataDoc) return;
+            _isSyncing = true;
+            showSyncStatus('Saving...', 'amber');
+            try {
+                const currentTimestamp = Date.now();
+                const maxRetentionPeriodMs = 31 * 24 * 60 * 60 * 1000;
+
+                // Also auto-purge expired entries on save (31-day retention)
+                const cleanTxs = txs.filter(i => (currentTimestamp - i.id) < maxRetentionPeriodMs);
+                const cleanFriends = friends.filter(i => (currentTimestamp - i.id) < maxRetentionPeriodMs);
+                const cleanEmis = emis; // EMIs don't expire
+                const cleanCards = cards.filter(i => (currentTimestamp - i.id) < maxRetentionPeriodMs);
+
+                await window._setDoc(window._dataDoc, {
+                    txs: cleanTxs,
+                    friends: cleanFriends,
+                    emis: cleanEmis,
+                    cards: cleanCards,
+                    cardMeta: cardMeta,
+                    theme: localStorage.getItem('theme') || 'light',
+                    lastUpdated: currentTimestamp
+                });
+                showSyncStatus('Synced ✓', 'emerald');
+            } catch (err) {
+                console.error('Firestore save error:', err);
+                showSyncStatus('Sync Error!', 'rose');
+                // Fallback to localStorage if Firebase fails
+                localStorage.setItem('mx_txs', JSON.stringify(txs));
+                localStorage.setItem('mx_friends', JSON.stringify(friends));
+                localStorage.setItem('mx_emis', JSON.stringify(emis));
+                localStorage.setItem('mx_cards', JSON.stringify(cards));
+            }
+            setTimeout(() => { _isSyncing = false; }, 1000);
+        }
+
+        // --- LISTEN FOR REAL-TIME CHANGES FROM OTHER DEVICES ---
+        function startFirestoreListener() {
+            setConnectionStatus('connecting');
+            setSyncStatus('idle');
+
+            window._onSnapshot(window._dataDoc, (snap) => {
+                // ✅ Step 1: Mark Firebase as connected
+                setConnectionStatus('connected');
+
+                if (_isSyncing) return; // skip echo of our own writes
+
+                // ✅ Step 2: Show sync in progress
+                setSyncStatus('saving');
+
+                if (snap.exists()) {
+                    const data = snap.data();
+                    txs     = data.txs     || [];
+                    friends = data.friends || [];
+                    emis    = data.emis    || [];
+                    cards   = data.cards   || [];
+                    if (data.cardMeta) {
+                        cardMeta = data.cardMeta;
+                        loadCardMetaInputs();
+                    }
+                    renderAll();
+                } else {
+                    renderAll();
+                }
+
+                // ✅ Step 3: Confirm sync complete
+                setSyncStatus('synced');
+
+            }, (err) => {
+                console.error('Firestore listener error:', err);
+                // ❌ Connection failed
+                setConnectionStatus('error');
+                setSyncStatus('error');
+                // Fallback to localStorage
+                txs     = JSON.parse(localStorage.getItem('mx_txs'))     || [];
+                friends = JSON.parse(localStorage.getItem('mx_friends')) || [];
+                emis    = JSON.parse(localStorage.getItem('mx_emis'))    || [];
+                cards   = JSON.parse(localStorage.getItem('mx_cards'))   || [];
+                renderAll();
+            });
         }
 
         function clearAllDataWithConfirmation() {
@@ -306,14 +438,13 @@
             if (userConfirmed) {
                 txs = []; friends = []; emis = []; cards = [];
                 dismissedAlertKeys = [];
-                updateAll();
+                saveToFirestore();
+                renderAll();
                 alert("Workspace reset completed successfully.");
             }
         }
 
-        purgeExpiredData();
-
-        let cardMeta = JSON.parse(localStorage.getItem('mx_card_meta')) || { fed_gen: 15, fed_due: 5, fed_limit: 100000, fedrupay_gen: 20, fedrupay_due: 10, fedrupay_limit: 100000 };
+        let cardMeta = { fed_gen: 15, fed_due: 5, fed_limit: 100000, fedrupay_gen: 20, fedrupay_due: 10, fedrupay_limit: 100000 };
         let expenseChart = null;
 
         const fRup = (num) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(num);
@@ -323,6 +454,7 @@
             localStorage.setItem('theme', isDark ? 'dark' : 'light');
             document.getElementById('theme-icon').className = isDark ? "fa-solid fa-sun" : "fa-solid fa-moon";
             updateChart();
+            saveToFirestore(); // sync theme across devices
         }
 
         function quickAmt(fieldId, val) {
@@ -340,7 +472,7 @@
             cardMeta.fedrupay_due = parseInt(document.getElementById('cc-due-fedrupay').value) || 10;
             cardMeta.fedrupay_limit = parseFloat(document.getElementById('cc-limit-fedrupay').value) || 100000;
             
-            localStorage.setItem('mx_card_meta', JSON.stringify(cardMeta));
+            saveToFirestore(); // replaces: localStorage.setItem('mx_card_meta', ...)
             updateAll();
         }
 
@@ -387,12 +519,8 @@
             checkGlobalAlerts();
         }
 
-        function updateAll() {
-            localStorage.setItem('mx_txs', JSON.stringify(txs));
-            localStorage.setItem('mx_friends', JSON.stringify(friends));
-            localStorage.setItem('mx_emis', JSON.stringify(emis));
-            localStorage.setItem('mx_cards', JSON.stringify(cards));
-
+        // Separate render-only function (called by Firestore listener)
+        function renderAll() {
             let inc = txs.filter(t => t.type === 'income').reduce((s,t) => s + t.amount, 0);
             let exp = txs.filter(t => t.type === 'expense').reduce((s,t) => s + t.amount, 0);
             
@@ -449,6 +577,11 @@
             renderEmiList();
             renderCcList();
             updateChart();
+        }
+
+        function updateAll() {
+            renderAll();
+            saveToFirestore(); // save to cloud, broadcast to all devices
         }
 
         function checkGlobalAlerts() {
@@ -837,7 +970,16 @@
 
         document.getElementById('cc-date').value = new Date().toISOString().split('T')[0];
         loadCardMetaInputs();
-        updateAll();
+
+        // 🔥 Wait for Firebase module to be ready, then start listener
+        function waitForFirebase() {
+            if (window._firebaseReady && window._dataDoc && window._onSnapshot) {
+                startFirestoreListener();
+            } else {
+                setTimeout(waitForFirebase, 100);
+            }
+        }
+        waitForFirebase();
     </script>
 </body>
 </html>
