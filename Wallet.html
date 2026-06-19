@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Wallet - Personal Ledger</title>
+    <title>My Wallet</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -34,7 +34,7 @@
                 <button onclick="toggleDarkMode()" class="text-emerald-100 hover:text-white text-lg" title="Toggle Theme">
                     <i id="theme-icon" class="fa-solid fa-moon"></i>
                 </button>
-                <span class="text-xs bg-emerald-800 px-3 py-1 rounded-full text-emerald-100">Advanced Personal Ledger</span>
+                <span class="text-xs bg-emerald-800 px-3 py-1 rounded-full text-emerald-100">SANJU P R</span>
             </div>
         </div>
     </nav>
@@ -64,15 +64,15 @@
 
     <main class="max-w-6xl mx-auto p-4 md:p-6 space-y-6">
 
-        <div id="alerts-container" class="hidden space-y-2">
-            </div>
+        <div id="alerts-container" class="hidden space-y-2"></div>
 
         <div id="content-dashboard" class="tab-content space-y-6">
 
             <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
-                    <p class="text-xs font-medium text-slate-400 uppercase">Cash & Bank Balance</p>
-                    <h3 id="dash-balance" class="text-xl font-bold text-slate-900 mt-1">₹0</h3>
+                <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 bg-gradient-to-br from-white to-teal-50/20 dark:to-teal-950/10">
+                    <p class="text-xs font-medium text-teal-600 dark:text-teal-400 uppercase tracking-wider flex items-center gap-1"><i class="fa-solid fa-shield-halved"></i> Safe To Spend</p>
+                    <h3 id="dash-balance" class="text-xl font-black text-slate-900 mt-1">₹0</h3>
+                    <p class="text-[10px] text-slate-400 mt-0.5" id="dash-balance-sub">EMI Overhead Reserved</p>
                 </div>
                 <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
                     <p class="text-xs font-medium text-slate-400 uppercase">Friends Net Tally</p>
@@ -189,7 +189,7 @@
                 <h2 class="text-lg font-semibold text-slate-800 mb-4"><i class="fa-solid fa-plus text-emerald-600 mr-1"></i> Add Active Subscription / EMI</h2>
                 <form id="form-emi" class="space-y-4">
                     <div>
-                        <input type="text" id="emi-name" placeholder="EMI Designation (e.g., HDFC Car Loan)" required class="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-emerald-600">
+                        <input type="text" id="emi-name" placeholder="EMI Designation (e.g., Federal Personal Loan)" required class="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-emerald-600">
                     </div>
                     <div>
                         <input type="number" id="emi-amount" placeholder="Monthly Payment (₹)" required class="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-emerald-600">
@@ -214,10 +214,8 @@
                     <div>
                         <label class="block text-xs font-semibold text-slate-400 uppercase mb-1">Select Active Card</label>
                         <select id="cc-cardname" required class="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-emerald-600">
-                            <option value="HDFC Regalia">💳 HDFC Regalia</option>
-                            <option value="SBI Card Elite">💳 SBI Card Elite</option>
-                            <option value="ICICI Amazon Pay">💳 ICICI Amazon Pay</option>
-                            <option value="Axis Ace">💳 Axis Ace</option>
+                            <option value="Federal Credit Card">💳 Federal Credit Card</option>
+                            <option value="Federal RuPay Credit Card">💳 Federal RuPay Credit Card</option>
                         </select>
                     </div>
                     <div>
@@ -244,17 +242,23 @@
                 
                 <div class="bg-white p-4 rounded-xl mb-4 border border-slate-200 grid grid-cols-1 md:grid-cols-2 gap-4 shadow-sm">
                     <div class="border border-slate-100 p-3 rounded-xl bg-slate-50/50">
-                        <h4 class="text-xs font-bold text-indigo-600 mb-2 uppercase tracking-wider">HDFC Statement Loop</h4>
+                        <h4 class="text-xs font-bold text-indigo-600 mb-2 uppercase tracking-wider">Federal Card Settings</h4>
                         <div class="grid grid-cols-2 gap-2 text-xs">
-                            <label class="text-slate-500 font-medium">Bill Day: <input type="number" id="cc-gen-hdfc" min="1" max="31" value="15" onchange="saveCardMeta()" class="w-full px-2 py-1 mt-0.5 rounded-lg border border-slate-200 bg-white text-slate-800 focus:outline-none"></label>
-                            <label class="text-slate-500 font-medium">Due Day: <input type="number" id="cc-due-hdfc" min="1" max="31" value="5" onchange="saveCardMeta()" class="w-full px-2 py-1 mt-0.5 rounded-lg border border-slate-200 bg-white text-slate-800 focus:outline-none"></label>
+                            <label class="text-slate-500 font-medium">Bill Day: <input type="number" id="cc-gen-fed" min="1" max="31" value="15" onchange="saveCardMeta()" class="w-full px-2 py-1 mt-0.5 rounded-lg border border-slate-200 bg-white text-slate-800 focus:outline-none"></label>
+                            <label class="text-slate-500 font-medium">Due Day: <input type="number" id="cc-due-fed" min="1" max="31" value="5" onchange="saveCardMeta()" class="w-full px-2 py-1 mt-0.5 rounded-lg border border-slate-200 bg-white text-slate-800 focus:outline-none"></label>
+                        </div>
+                        <div class="mt-2 text-xs">
+                            <label class="text-slate-500 font-medium">Max Card Limit (₹): <input type="number" id="cc-limit-fed" value="100000" onchange="saveCardMeta()" class="w-full px-2 py-1 mt-0.5 rounded-lg border border-slate-200 bg-white text-slate-800 font-semibold focus:outline-none"></label>
                         </div>
                     </div>
                     <div class="border border-slate-100 p-3 rounded-xl bg-slate-50/50">
-                        <h4 class="text-xs font-bold text-emerald-600 mb-2 uppercase tracking-wider">SBI Card Loop</h4>
+                        <h4 class="text-xs font-bold text-emerald-600 mb-2 uppercase tracking-wider">Federal RuPay Settings</h4>
                         <div class="grid grid-cols-2 gap-2 text-xs">
-                            <label class="text-slate-500 font-medium">Bill Day: <input type="number" id="cc-gen-sbi" min="1" max="31" value="20" onchange="saveCardMeta()" class="w-full px-2 py-1 mt-0.5 rounded-lg border border-slate-200 bg-white text-slate-800 focus:outline-none"></label>
-                            <label class="text-slate-500 font-medium">Due Day: <input type="number" id="cc-due-sbi" min="1" max="31" value="10" onchange="saveCardMeta()" class="w-full px-2 py-1 mt-0.5 rounded-lg border border-slate-200 bg-white text-slate-800 focus:outline-none"></label>
+                            <label class="text-slate-500 font-medium">Bill Day: <input type="number" id="cc-gen-fedrupay" min="1" max="31" value="20" onchange="saveCardMeta()" class="w-full px-2 py-1 mt-0.5 rounded-lg border border-slate-200 bg-white text-slate-800 focus:outline-none"></label>
+                            <label class="text-slate-500 font-medium">Due Day: <input type="number" id="cc-due-fedrupay" min="1" max="31" value="10" onchange="saveCardMeta()" class="w-full px-2 py-1 mt-0.5 rounded-lg border border-slate-200 bg-white text-slate-800 focus:outline-none"></label>
+                        </div>
+                        <div class="mt-2 text-xs">
+                            <label class="text-slate-500 font-medium">Max Card Limit (₹): <input type="number" id="cc-limit-fedrupay" value="100000" onchange="saveCardMeta()" class="w-full px-2 py-1 mt-0.5 rounded-lg border border-slate-200 bg-white text-slate-800 font-semibold focus:outline-none"></label>
                         </div>
                     </div>
                 </div>
@@ -268,47 +272,48 @@
     <div id="statement-image-template" class="absolute left-[-9999px] top-[-9999px] w-[1000px] bg-slate-950 p-10 rounded-3xl"></div>
 
     <script>
+        // Global Datastores declared explicitly
+        let txs = [];
+        let friends = [];
+        let emis = [];
+        let cards = [];
+        // Track closed warning elements dynamically within current session lifecycle
+        let dismissedAlertKeys = [];
+
         // --- 31-DAY AUTOMATIC RETENTION AND EXPIRY SYSTEM ---
         function purgeExpiredData() {
             const currentTimestamp = Date.now();
-            const maxRetentionPeriodMs = 31 * 24 * 60 * 60 * 1000; // 31 Days in Milliseconds
+            const maxRetentionPeriodMs = 31 * 24 * 60 * 60 * 1000;
 
-            // Fetch current stored lists
             let localTxs = JSON.parse(localStorage.getItem('mx_txs')) || [];
             let localFriends = JSON.parse(localStorage.getItem('mx_friends')) || [];
             let localEmis = JSON.parse(localStorage.getItem('mx_emis')) || [];
             let localCards = JSON.parse(localStorage.getItem('mx_cards')) || [];
 
-            // Filter out items that are older than 31 days based on their entry ID timestamp
             txs = localTxs.filter(item => (currentTimestamp - item.id) < maxRetentionPeriodMs);
             friends = localFriends.filter(item => (currentTimestamp - item.id) < maxRetentionPeriodMs);
             emis = localEmis.filter(item => (currentTimestamp - item.id) < maxRetentionPeriodMs);
             cards = localCards.filter(item => (currentTimestamp - item.id) < maxRetentionPeriodMs);
 
-            // Resave the fresh datasets back to browser storage
             localStorage.setItem('mx_txs', JSON.stringify(txs));
             localStorage.setItem('mx_friends', JSON.stringify(friends));
             localStorage.setItem('mx_emis', JSON.stringify(emis));
             localStorage.setItem('mx_cards', JSON.stringify(cards));
         }
 
-        // --- CLEAR ENTIRE WORKSPACE FUNCTION WITH SAFEGUARD ---
         function clearAllDataWithConfirmation() {
             const userConfirmed = confirm("Are you absolutely sure you want to clear all transactions, friends balance logs, EMIs, and credit logs? This cannot be undone.");
             if (userConfirmed) {
-                txs = [];
-                friends = [];
-                emis = [];
-                cards = [];
+                txs = []; friends = []; emis = []; cards = [];
+                dismissedAlertKeys = [];
                 updateAll();
                 alert("Workspace reset completed successfully.");
             }
         }
 
-        // Run the 31-day data cleaning cycle immediately on launch / refresh
         purgeExpiredData();
 
-        let cardMeta = JSON.parse(localStorage.getItem('mx_card_meta')) || { hdfc_gen: 15, hdfc_due: 5, sbi_gen: 20, sbi_due: 10 };
+        let cardMeta = JSON.parse(localStorage.getItem('mx_card_meta')) || { fed_gen: 15, fed_due: 5, fed_limit: 100000, fedrupay_gen: 20, fedrupay_due: 10, fedrupay_limit: 100000 };
         let expenseChart = null;
 
         const fRup = (num) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(num);
@@ -327,19 +332,26 @@
         }
 
         function saveCardMeta() {
-            cardMeta.hdfc_gen = parseInt(document.getElementById('cc-gen-hdfc').value) || 15;
-            cardMeta.hdfc_due = parseInt(document.getElementById('cc-due-hdfc').value) || 5;
-            cardMeta.sbi_gen = parseInt(document.getElementById('cc-gen-sbi').value) || 20;
-            cardMeta.sbi_due = parseInt(document.getElementById('cc-due-sbi').value) || 10;
+            cardMeta.fed_gen = parseInt(document.getElementById('cc-gen-fed').value) || 15;
+            cardMeta.fed_due = parseInt(document.getElementById('cc-due-fed').value) || 5;
+            cardMeta.fed_limit = parseFloat(document.getElementById('cc-limit-fed').value) || 100000;
+            
+            cardMeta.fedrupay_gen = parseInt(document.getElementById('cc-gen-fedrupay').value) || 20;
+            cardMeta.fedrupay_due = parseInt(document.getElementById('cc-due-fedrupay').value) || 10;
+            cardMeta.fedrupay_limit = parseFloat(document.getElementById('cc-limit-fedrupay').value) || 100000;
+            
             localStorage.setItem('mx_card_meta', JSON.stringify(cardMeta));
-            checkGlobalAlerts();
+            updateAll();
         }
 
         function loadCardMetaInputs() {
-            document.getElementById('cc-gen-hdfc').value = cardMeta.hdfc_gen;
-            document.getElementById('cc-due-hdfc').value = cardMeta.hdfc_due;
-            document.getElementById('cc-gen-sbi').value = cardMeta.sbi_gen;
-            document.getElementById('cc-due-sbi').value = cardMeta.sbi_due;
+            document.getElementById('cc-gen-fed').value = cardMeta.fed_gen;
+            document.getElementById('cc-due-fed').value = cardMeta.fed_due;
+            document.getElementById('cc-limit-fed').value = cardMeta.fed_limit || 100000;
+            
+            document.getElementById('cc-gen-fedrupay').value = cardMeta.fedrupay_gen;
+            document.getElementById('cc-due-fedrupay').value = cardMeta.fedrupay_due;
+            document.getElementById('cc-limit-fedrupay').value = cardMeta.fedrupay_limit || 100000;
         }
 
         function switchTab(tabId) {
@@ -370,6 +382,11 @@
             return txs.some(t => t.emiRefId === emiId && t.paidMonth === now.getMonth() && t.paidYear === now.getFullYear());
         }
 
+        function dismissWarningElement(uniqueKey) {
+            dismissedAlertKeys.push(uniqueKey);
+            checkGlobalAlerts();
+        }
+
         function updateAll() {
             localStorage.setItem('mx_txs', JSON.stringify(txs));
             localStorage.setItem('mx_friends', JSON.stringify(friends));
@@ -378,7 +395,27 @@
 
             let inc = txs.filter(t => t.type === 'income').reduce((s,t) => s + t.amount, 0);
             let exp = txs.filter(t => t.type === 'expense').reduce((s,t) => s + t.amount, 0);
-            document.getElementById('dash-balance').innerText = fRup(inc - exp);
+            
+            let remainingEmiDues = 0;
+            let totalOverhead = 0;
+            emis.forEach(e => {
+                totalOverhead += e.amount;
+                if (!isEmiPaidThisMonth(e.id)) {
+                    remainingEmiDues += e.amount;
+                }
+            });
+
+            let liquidWalletPool = inc - exp;
+            let safeToSpendVal = liquidWalletPool - remainingEmiDues;
+            
+            const mainBalEl = document.getElementById('dash-balance');
+            mainBalEl.innerText = fRup(safeToSpendVal);
+            document.getElementById('dash-balance-sub').innerText = `Locked for EMIs: ${fRup(remainingEmiDues)}`;
+            if(safeToSpendVal < 0) {
+                mainBalEl.className = "text-xl font-black text-rose-600 mt-1";
+            } else {
+                mainBalEl.className = "text-xl font-black text-slate-900 mt-1";
+            }
 
             let grandFrNet = 0;
             friends.forEach(f => grandFrNet += (f.type === 'lent' ? f.amount : -f.amount));
@@ -391,34 +428,19 @@
             const curMonth = now.getMonth();
             const curYear = now.getFullYear();
 
-            let lastMonth = curMonth - 1;
-            let lastYear = curYear;
+            let lastMonth = curMonth - 1; let lastYear = curYear;
             if (lastMonth < 0) { lastMonth = 11; lastYear--; }
 
-            let currentMonthSum = 0;
-            let lastMonthSum = 0;
-
+            let currentMonthSum = 0; let lastMonthSum = 0;
             cards.forEach(c => {
                 const cDate = new Date(c.date);
-                if (cDate.getFullYear() === curYear && cDate.getMonth() === curMonth) {
-                    currentMonthSum += c.amount;
-                } else if (cDate.getFullYear() === lastYear && cDate.getMonth() === lastMonth) {
-                    lastMonthSum += c.amount;
-                }
+                if (cDate.getFullYear() === curYear && cDate.getMonth() === curMonth) { currentMonthSum += c.amount; } 
+                else if (cDate.getFullYear() === lastYear && cDate.getMonth() === lastMonth) { lastMonthSum += c.amount; }
             });
 
             document.getElementById('dash-cc-current').innerText = fRup(currentMonthSum);
             document.getElementById('dash-cc-last').innerText = `Last Month: ${fRup(lastMonthSum)}`;
-
-            let totalPendingEmi = 0;
-            let totalOverhead = 0;
-            emis.forEach(e => {
-                totalOverhead += e.amount;
-                if (!isEmiPaidThisMonth(e.id)) {
-                    totalPendingEmi += e.amount;
-                }
-            });
-            document.getElementById('dash-emis').innerText = fRup(totalPendingEmi);
+            document.getElementById('dash-emis').innerText = fRup(remainingEmiDues);
             document.getElementById('dash-emis-sub').innerText = `Total Overhead: ${fRup(totalOverhead)}/mo`;
 
             checkGlobalAlerts();
@@ -432,7 +454,7 @@
         function checkGlobalAlerts() {
             const container = document.getElementById('alerts-container');
             container.innerHTML = '';
-            let triggerAlert = false;
+            let liveVisibleAlertCount = 0;
             const now = new Date();
             const todayDay = now.getDate();
 
@@ -441,41 +463,79 @@
                 const targetDay = parseInt(e.day);
                 let diffDays = targetDay - todayDay;
                 if (diffDays >= 0 && diffDays <= 2) {
-                    triggerAlert = true;
+                    const alertKey = `emi_${e.id}`;
+                    if (dismissedAlertKeys.includes(alertKey)) return;
+
+                    liveVisibleAlertCount++;
                     const alertDiv = document.createElement('div');
-                    alertDiv.className = "bg-amber-50 dark:bg-amber-950/40 border-l-4 border-amber-500 text-amber-900 dark:text-amber-200 p-3 rounded-r-xl flex items-center justify-between text-xs font-semibold shadow-sm animate-pulse";
+                    alertDiv.className = "bg-amber-50 dark:bg-amber-950/40 border-l-4 border-amber-500 text-amber-900 dark:text-amber-200 p-3 rounded-r-xl flex items-center justify-between text-xs font-semibold shadow-sm";
                     alertDiv.innerHTML = `
                         <div class="flex items-center gap-2">
-                            <i class="fa-solid fa-bell text-amber-600 text-sm"></i>
+                            <i class="fa-solid fa-bell text-amber-600 text-sm animate-pulse"></i>
                             <span><strong>EMI Due:</strong> ${e.name} (${fRup(e.amount)}) is due ${diffDays === 0 ? 'Today' : 'in ' + diffDays + ' days'}</span>
                         </div>
-                        <button onclick="payEmiDirectly(${e.id})" class="bg-amber-600 text-white px-2.5 py-1 rounded-md text-[11px] font-bold">Mark Paid</button>
+                        <div class="flex items-center gap-3">
+                            <button onclick="payEmiDirectly(${e.id})" class="bg-amber-600 text-white px-2.5 py-1 rounded-md text-[11px] font-bold shadow-sm hover:bg-amber-700">Mark Paid</button>
+                            <button onclick="dismissWarningElement('${alertKey}')" title="Dismiss Alert" class="text-amber-400 hover:text-amber-700 text-sm px-1 font-black">&times;</button>
+                        </div>
                     `;
                     container.appendChild(alertDiv);
+                }
+            });
+
+            const cardsGroup = { 'Federal Credit Card': 0, 'Federal RuPay Credit Card': 0 };
+            cards.forEach(c => {
+                const cDate = new Date(c.date);
+                if(cDate.getMonth() === now.getMonth() && cDate.getFullYear() === now.getFullYear()) {
+                    if(cardsGroup[c.name] !== undefined) cardsGroup[c.name] += c.amount;
                 }
             });
 
             const cardConfigs = [
-                { name: 'HDFC Regalia', due: cardMeta.hdfc_due },
-                { name: 'SBI Card Elite', due: cardMeta.sbi_due }
+                { id: 'fed', name: 'Federal Credit Card', due: cardMeta.fed_due, limit: cardMeta.fed_limit || 100000 },
+                { id: 'rup', name: 'Federal RuPay Credit Card', due: cardMeta.fedrupay_due, limit: cardMeta.fedrupay_limit || 100000 }
             ];
+
             cardConfigs.forEach(config => {
                 let diff = config.due - todayDay;
                 if (diff >= 0 && diff <= 3) {
-                    triggerAlert = true;
-                    const alertDiv = document.createElement('div');
-                    alertDiv.className = "bg-indigo-50 dark:bg-indigo-950/40 border-l-4 border-indigo-500 text-indigo-900 dark:text-indigo-200 p-3 rounded-r-xl flex items-center justify-between text-xs font-semibold shadow-sm";
-                    alertDiv.innerHTML = `
-                        <div class="flex items-center gap-2">
-                            <i class="fa-solid fa-credit-card text-indigo-600 text-sm"></i>
-                            <span><strong>Card Due Soon:</strong> ${config.name} payment cycle deadline is in ${diff} days (Day ${config.due}).</span>
-                        </div>
-                    `;
-                    container.appendChild(alertDiv);
+                    const alertKey = `card_due_${config.id}`;
+                    if (!dismissedAlertKeys.includes(alertKey)) {
+                        liveVisibleAlertCount++;
+                        const alertDiv = document.createElement('div');
+                        alertDiv.className = "bg-indigo-50 dark:bg-indigo-950/40 border-l-4 border-indigo-500 text-indigo-900 dark:text-indigo-200 p-3 rounded-r-xl flex items-center justify-between text-xs font-semibold shadow-sm";
+                        alertDiv.innerHTML = `
+                            <div class="flex items-center gap-2">
+                                <i class="fa-solid fa-credit-card text-indigo-600 text-sm"></i>
+                                <span><strong>Card Due Soon:</strong> ${config.name} cycle deadline is in ${diff} days (Day ${config.due}).</span>
+                            </div>
+                            <button onclick="dismissWarningElement('${alertKey}')" title="Dismiss Alert" class="text-indigo-400 hover:text-indigo-700 text-sm px-1 font-black">&times;</button>
+                        `;
+                        container.appendChild(alertDiv);
+                    }
+                }
+
+                let currentSpend = cardsGroup[config.name] || 0;
+                let utilRatio = (currentSpend / config.limit) * 100;
+                if(utilRatio > 30) {
+                    const alertKey = `card_util_${config.id}`;
+                    if (!dismissedAlertKeys.includes(alertKey)) {
+                        liveVisibleAlertCount++;
+                        const alertDiv = document.createElement('div');
+                        alertDiv.className = "bg-rose-50 dark:bg-rose-950/30 border-l-4 border-rose-500 text-rose-900 dark:text-rose-200 p-3 rounded-r-xl flex items-center justify-between text-xs font-semibold shadow-sm";
+                        alertDiv.innerHTML = `
+                            <div class="flex items-center gap-2 pr-4">
+                                <i class="fa-solid fa-triangle-exclamation text-rose-600"></i>
+                                <span><strong>High Utilization Warning:</strong> ${config.name} is at <span class="text-rose-600 dark:text-rose-400 font-black">${utilRatio.toFixed(1)}%</span> pool usage (${fRup(currentSpend)} / ${fRup(config.limit)}). Ideal cap is below 30%.</span>
+                            </div>
+                            <button onclick="dismissWarningElement('${alertKey}')" title="Dismiss Alert" class="text-rose-400 hover:text-rose-700 text-sm px-1 font-black">&times;</button>
+                        `;
+                        container.appendChild(alertDiv);
+                    }
                 }
             });
 
-            container.className = triggerAlert ? "space-y-2" : "hidden";
+            container.className = liveVisibleAlertCount > 0 ? "space-y-2" : "hidden";
         }
 
         function settleFriendDirectly(name, netAmount) {
@@ -519,7 +579,7 @@
                             <p class="text-[11px] text-slate-400 mt-1.5 uppercase font-semibold">Premium Multi-Tab Account Ledger Report</p>
                         </div>
                         <div class="text-right">
-                            <span class="bg-gradient-to-r from-emerald-500/20 to-teal-500/20 border border-emerald-500/40 text-emerald-300 font-bold px-4 py-1.5 rounded-xl text-xs">${currentMonthName} ${now.getFullYear()}</span>
+                            <span class="bg-gradient-to-r from-emerald-500/20 to-teal-500/20 border border-emerald-500/40 text-emerald-300 font-bold px-4 py-1.5 rounded-xl text-xs">${currentMonthName} 2026</span>
                             <p class="text-[10px] text-slate-500 mt-2">Issued: ${now.toLocaleDateString()}</p>
                         </div>
                     </div>
@@ -646,11 +706,23 @@
             if (!emis.length) { box.innerHTML = '<p class="text-xs text-slate-400 py-4 text-center">No active configured entries.</p>'; return; }
             [...emis].sort((a,b)=>parseInt(a.day)-parseInt(b.day)).forEach(e => {
                 const item = document.createElement('div');
+                const paid = isEmiPaidThisMonth(e.id);
                 item.className = "flex justify-between items-center bg-white border border-slate-100 p-3 rounded-xl text-xs shadow-sm";
                 item.innerHTML = `
-                    <div><div class="flex items-center gap-2"><p class="font-bold text-slate-800 text-sm">${e.name}</p></div><p class="text-slate-500 text-[10px] mt-0.5">Day ${e.day} of month</p></div>
-                    <div class="flex items-center gap-3"><p class="font-bold text-slate-800 text-sm">${fRup(e.amount)}</p>
-                    <button onclick="delItem('emi', ${e.id})" class="text-slate-300 hover:text-rose-600"><i class="fa-solid fa-trash-can"></i></button></div>
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <p class="font-bold text-slate-800 text-sm">${e.name}</p>
+                            <span class="px-2 py-0.5 text-[10px] font-bold rounded-full ${paid ? 'bg-teal-50 text-teal-700 border border-teal-200' : 'bg-amber-50 text-amber-700 border border-amber-200'}">
+                                ${paid ? '✓ Paid' : '⏳ Pending'}
+                            </span>
+                        </div>
+                        <p class="text-slate-500 text-[10px] mt-0.5">Day ${e.day} of month</p>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <p class="font-bold text-slate-800 text-sm">${fRup(e.amount)}</p>
+                        ${!paid ? `<button onclick="payEmiDirectly(${e.id})" title="Mark as Paid" class="text-emerald-600 hover:text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg font-bold text-[10px] transition-colors">Pay</button>` : ''}
+                        <button onclick="delItem('emi', ${e.id})" class="text-slate-300 hover:text-rose-600"><i class="fa-solid fa-trash-can"></i></button>
+                    </div>
                 `;
                 box.appendChild(item);
             });
@@ -659,13 +731,45 @@
         function renderCcList() {
             const box = document.getElementById('cc-list'); box.innerHTML = '';
             if (!cards.length) { box.innerHTML = '<p class="text-xs text-slate-400 py-4 text-center">No statements captured.</p>'; return; }
+            
+            const now = new Date();
+            const cardsGroup = { 'Federal Credit Card': 0, 'Federal RuPay Credit Card': 0 };
+            cards.forEach(c => {
+                const cDate = new Date(c.date);
+                if(cDate.getMonth() === now.getMonth() && cDate.getFullYear() === now.getFullYear()) {
+                    if(cardsGroup[c.name] !== undefined) cardsGroup[c.name] += c.amount;
+                }
+            });
+
             [...cards].sort((a,b)=>new Date(b.date)-new Date(a.date)).forEach(c => {
                 const item = document.createElement('div');
-                item.className = "flex justify-between items-center bg-white border border-slate-200 p-3 rounded-xl text-xs border-l-4 border-indigo-500 shadow-sm";
-                item.innerHTML = `<div><p class="font-bold text-slate-800">${c.desc}</p>
-                <div class="flex gap-2 items-center mt-0.5"><span class="text-[9px] text-indigo-600 font-bold bg-indigo-50 px-1 rounded">${c.name}</span><span class="text-[9px] text-slate-400">${c.date}</span></div></div>
-                <div class="flex items-center gap-3"><span class="font-bold text-rose-600">${fRup(c.amount)}</span>
-                <button onclick="delItem('cc', ${c.id})" class="text-slate-300 hover:text-rose-600"><i class="fa-solid fa-trash-can"></i></button></div>`;
+                let limitsMapping = c.name === 'Federal Credit Card' ? (cardMeta.fed_limit || 100000) : (cardMeta.fedrupay_limit || 100000);
+                let currentAccumulatedSpend = cardsGroup[c.name] || 0;
+                let usagePercentage = (currentAccumulatedSpend / limitsMapping) * 100;
+
+                item.className = "flex flex-col bg-white border border-slate-200 p-3 rounded-xl text-xs shadow-sm space-y-1.5";
+                item.innerHTML = `
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <p class="font-bold text-slate-800">${c.desc}</p>
+                            <div class="flex gap-2 items-center mt-0.5">
+                                <span class="text-[9px] text-indigo-600 font-bold bg-indigo-50 px-1 rounded">${c.name}</span>
+                                <span class="text-[9px] text-slate-400">${c.date}</span>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <span class="font-bold text-rose-600">${fRup(c.amount)}</span>
+                            <button onclick="delItem('cc', ${c.id})" class="text-slate-300 hover:text-rose-600"><i class="fa-solid fa-trash-can"></i></button>
+                        </div>
+                    </div>
+                    <div class="w-full bg-slate-100 rounded-full h-1 mt-1">
+                        <div class="${usagePercentage > 30 ? 'bg-amber-500' : 'bg-indigo-500'} h-1 rounded-full" style="width: ${Math.min(usagePercentage, 100)}%"></div>
+                    </div>
+                    <div class="flex justify-between text-[9px] text-slate-400">
+                        <span>Card usage ratio this month: ${usagePercentage.toFixed(1)}%</span>
+                        <span>Limit cap: ${fRup(limitsMapping)}</span>
+                    </div>
+                `;
                 box.appendChild(item);
             });
         }
