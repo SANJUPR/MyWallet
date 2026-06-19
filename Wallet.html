@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Wallet - Personal Ledger</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script>
+        if (localStorage.getItem('theme') === 'dark') {
+            document.documentElement.classList.add('dark');
+        }
+    </script>
+    <style>
+        .dark body { background-color: #0f172a; color: #f1f5f9; }
+        .dark .bg-white { background-color: #1e293b !important; color: #f1f5f9 !important; }
+        .dark .border-slate-100, .dark .border-slate-200 { border-color: #334155 !important; }
+        .dark input, .dark select { background-color: #334155 !important; color: #f1f5f9 !important; border-color: #475569 !important; }
+        .dark text, .dark .text-slate-900 { color: #f1f5f9 !important; }
+        .dark .text-slate-700, .dark .text-slate-800 { color: #cbd5e1 !important; }
+        .dark .text-slate-400 { color: #94a3b8 !important; }
+        .dark .bg-slate-50 { background-color: #1e293b !important; }
+        .dark .bg-slate-50\/50 { background-color: #1e293b\/50 !important; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans antialiased pb-12 transition-colors duration-200">
+
+    <nav class="bg-emerald-700 text-white p-4 shadow-md sticky top-0 z-50">
+        <div class="max-w-6xl mx-auto flex justify-between items-center">
+            <h1 class="text-xl font-bold tracking-wide"><i class="fa-solid fa-wallet mr-2"></i>My Wallet</h1>
+            <div class="flex items-center gap-4">
+                <button onclick="toggleDarkMode()" class="text-emerald-100 hover:text-white text-lg" title="Toggle Theme">
+                    <i id="theme-icon" class="fa-solid fa-moon"></i>
+                </button>
+                <span class="text-xs bg-emerald-800 px-3 py-1 rounded-full text-emerald-100">Advanced Personal Ledger</span>
+            </div>
+        </div>
+    </nav>
+
+    <div class="bg-white border-b border-slate-200 sticky top-[57px] z-40 shadow-sm">
+        <div class="max-w-6xl mx-auto flex justify-between items-center px-4">
+            <div class="flex md:space-x-8 text-sm font-medium overflow-x-auto whitespace-nowrap">
+                <button onclick="switchTab('dashboard')" id="tab-dashboard" class="py-3 px-4 border-b-2 border-emerald-600 text-emerald-600 flex items-center gap-1.5"><i class="fa-solid fa-chart-pie"></i> Dashboard</button>
+                <button onclick="switchTab('friends')" id="tab-friends" class="py-3 px-4 border-b-2 border-transparent text-slate-500 hover:text-slate-700 flex items-center gap-1.5"><i class="fa-solid fa-users"></i> Friends</button>
+                <button onclick="switchTab('emis')" id="tab-emis" class="py-3 px-4 border-b-2 border-transparent text-slate-500 hover:text-slate-700 flex items-center gap-1.5"><i class="fa-solid fa-calendar-check"></i> EMIs</button>
+                <button onclick="switchTab('cards')" id="tab-cards" class="py-3 px-4 border-b-2 border-transparent text-slate-500 hover:text-slate-700 flex items-center gap-1.5"><i class="fa-solid fa-credit-card"></i> Cards</button>
+            </div>
+            
+            <div class="flex items-center gap-2 my-2">
+                <button onclick="clearAllDataWithConfirmation()" title="Clear All Ledger Data" class="bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-600 px-3 py-1.5 rounded-xl flex items-center gap-1.5 text-xs font-semibold shadow-sm transition-all">
+                    <i class="fa-solid fa-trash-can"></i>
+                    <span class="hidden sm:inline">Clear Workspace</span>
+                </button>
+
+                <button onclick="generateImageStatement()" title="Save Month Details (Download Image)" class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-xl flex items-center gap-2 text-xs font-semibold shadow-sm transition-all hover:scale-105">
+                    <i class="fa-solid fa-file-invoice-dollar"></i>
+                    <span class="hidden sm:inline">Export Statement</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <main class="max-w-6xl mx-auto p-4 md:p-6 space-y-6">
+
+        <div id="alerts-container" class="hidden space-y-2">
+            </div>
+
+        <div id="content-dashboard" class="tab-content space-y-6">
+
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
+                    <p class="text-xs font-medium text-slate-400 uppercase">Cash & Bank Balance</p>
+                    <h3 id="dash-balance" class="text-xl font-bold text-slate-900 mt-1">₹0</h3>
+                </div>
+                <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
+                    <p class="text-xs font-medium text-slate-400 uppercase">Friends Net Tally</p>
+                    <h3 id="dash-friends" class="text-xl font-bold text-slate-900 mt-1">₹0</h3>
+                    <p class="text-[10px] text-slate-400 mt-0.5" id="dash-friends-sub">Settled</p>
+                </div>
+                <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
+                    <p class="text-xs font-medium text-slate-400 uppercase">CC Spent (Current Month)</p>
+                    <h3 id="dash-cc-current" class="text-xl font-bold text-rose-600 mt-1">₹0</h3>
+                    <p class="text-[10px] text-slate-400 mt-0.5" id="dash-cc-last">Last Month: ₹0</p>
+                </div>
+                <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
+                    <p class="text-xs font-medium text-slate-400 uppercase">Remaining EMIs Due</p>
+                    <h3 id="dash-emis" class="text-xl font-bold text-amber-600 mt-1">₹0</h3>
+                    <p class="text-[10px] text-slate-400 mt-0.5" id="dash-emis-sub">Total Monthly Overhead</p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 h-fit">
+                    <h2 class="text-md font-semibold text-slate-800 mb-4 flex items-center gap-2"><i class="fa-solid fa-circle-plus text-emerald-600"></i> Cash / Bank Entry</h2>
+                    <form id="form-transaction" class="space-y-4">
+                        <div class="grid grid-cols-2 gap-2">
+                            <label class="cursor-pointer border-2 border-teal-500 bg-teal-50/50 text-teal-700 rounded-xl p-2.5 flex items-center justify-center font-medium text-sm transition-all" id="tx-income-lbl">
+                                <input type="radio" name="txType" value="income" checked class="hidden" onchange="toggleTxStyle()"> Income
+                            </label>
+                            <label class="cursor-pointer border border-slate-200 text-slate-600 rounded-xl p-2.5 flex items-center justify-center font-medium text-sm transition-all" id="tx-expense-lbl">
+                                <input type="radio" name="txType" value="expense" class="hidden" onchange="toggleTxStyle()"> Expense
+                            </label>
+                        </div>
+                        <div>
+                            <input type="text" id="tx-desc" placeholder="e.g., Evening Chaya, Salary Payout" required class="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-emerald-600">
+                        </div>
+                        <div>
+                            <div class="flex gap-1 mb-1.5 text-[11px] font-semibold">
+                                <button type="button" onclick="quickAmt('tx-amount', 50)" class="bg-slate-100 border border-slate-200 text-slate-700 px-2.5 py-1 rounded-lg hover:bg-slate-200 transition-colors shadow-sm">+50</button>
+                                <button type="button" onclick="quickAmt('tx-amount', 100)" class="bg-slate-100 border border-slate-200 text-slate-700 px-2.5 py-1 rounded-lg hover:bg-slate-200 transition-colors shadow-sm">+100</button>
+                                <button type="button" onclick="quickAmt('tx-amount', 500)" class="bg-slate-100 border border-slate-200 text-slate-700 px-2.5 py-1 rounded-lg hover:bg-slate-200 transition-colors shadow-sm">+500</button>
+                            </div>
+                            <input type="number" id="tx-amount" placeholder="Amount (₹)" required class="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-emerald-600">
+                        </div>
+                        <div>
+                            <select id="tx-cat" required class="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-emerald-600">
+                                <option value="Chaya & Snacks">☕ Chaya & Snacks</option>
+                                <option value="Food & Dining">🍲 Food & Dining</option>
+                                <option value="Entertainment">🎬 Entertainment</option>
+                                <option value="Salary">💰 Salary / Profits</option>
+                                <option value="Travel">🚗 Travel & Fuel</option>
+                                <option value="Groceries">🛒 Groceries</option>
+                                <option value="EMI Payments">📉 EMI Payments</option>
+                                <option value="Others">📦 Others</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="w-full py-2.5 bg-emerald-600 text-white font-semibold text-sm rounded-xl shadow-md hover:bg-emerald-700">Save Entry</button>
+                    </form>
+                </div>
+
+                <div class="lg:col-span-2 space-y-6">
+                    <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 flex flex-col items-center">
+                        <h2 class="text-sm font-semibold text-slate-800 self-start mb-2"><i class="fa-solid fa-chart-pie text-emerald-600 mr-1"></i> Liquidity Spending Profile</h2>
+                        <div class="w-full max-w-[210px] p-1"><canvas id="expenseChart"></canvas></div>
+                    </div>
+                    <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-100">
+                        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-2 mb-3">
+                            <h2 class="text-sm font-semibold text-slate-800"><i class="fa-solid fa-history text-emerald-600 mr-1"></i> History Logs</h2>
+                            <div class="relative w-full md:w-64">
+                                <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-400 text-xs"></i>
+                                <input type="text" id="tx-search" onkeyup="renderTxList()" placeholder="Search desc or category..." class="w-full pl-8 pr-3 py-1 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none">
+                            </div>
+                        </div>
+                        <div class="max-h-[200px] overflow-y-auto space-y-2" id="tx-list"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="content-friends" class="tab-content hidden grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 h-fit">
+                <h2 class="text-lg font-semibold text-slate-800 mb-4"><i class="fa-solid fa-user-plus text-emerald-600 mr-1"></i> Record Mutual Entry</h2>
+                <form id="form-friend" class="space-y-4">
+                    <div class="grid grid-cols-2 gap-2">
+                        <label class="cursor-pointer border-2 border-rose-500 bg-rose-50/50 text-rose-700 rounded-xl p-2.5 flex items-center justify-center font-medium text-xs transition-all" id="fr-borrow-lbl">
+                            <input type="radio" name="frType" value="borrowed" checked class="hidden" onchange="toggleFrStyle()"> Borrowed From
+                        </label>
+                        <label class="cursor-pointer border border-slate-200 text-slate-600 rounded-xl p-2.5 flex items-center justify-center font-medium text-xs transition-all" id="fr-lend-lbl">
+                            <input type="radio" name="frType" value="lent" class="hidden" onchange="toggleFrStyle()"> Lent To
+                        </label>
+                    </div>
+                    <div>
+                        <input type="text" id="fr-name" placeholder="Friend's Name" required class="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-emerald-600">
+                    </div>
+                    <div>
+                        <div class="flex gap-1 mb-1.5 text-[11px] font-semibold">
+                            <button type="button" onclick="quickAmt('fr-amount', 50)" class="bg-slate-100 border border-slate-200 text-slate-700 px-2.5 py-1 rounded-lg hover:bg-slate-200 transition-colors shadow-sm">+50</button>
+                            <button type="button" onclick="quickAmt('fr-amount', 100)" class="bg-slate-100 border border-slate-200 text-slate-700 px-2.5 py-1 rounded-lg hover:bg-slate-200 transition-colors shadow-sm">+100</button>
+                            <button type="button" onclick="quickAmt('fr-amount', 500)" class="bg-slate-100 border border-slate-200 text-slate-700 px-2.5 py-1 rounded-lg hover:bg-slate-200 transition-colors shadow-sm">+500</button>
+                        </div>
+                        <input type="number" id="fr-amount" placeholder="Amount (₹)" required class="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-emerald-600">
+                    </div>
+                    <div>
+                        <input type="text" id="fr-notes" placeholder="Notes (e.g., Tea Share)" class="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-emerald-600">
+                    </div>
+                    <button type="submit" class="w-full py-2.5 bg-emerald-600 text-white font-semibold text-sm rounded-xl hover:bg-emerald-700">Add Entry</button>
+                </form>
+            </div>
+            <div class="lg:col-span-2 bg-white rounded-2xl p-5 shadow-sm border border-slate-100">
+                <h2 class="text-lg font-semibold text-slate-800 mb-4"><i class="fa-solid fa-address-book text-emerald-600 mr-1"></i> Tallied Balances</h2>
+                <div id="friend-list" class="space-y-4 max-h-[500px] overflow-y-auto"></div>
+            </div>
+        </div>
+
+        <div id="content-emis" class="tab-content hidden grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 h-fit">
+                <h2 class="text-lg font-semibold text-slate-800 mb-4"><i class="fa-solid fa-plus text-emerald-600 mr-1"></i> Add Active Subscription / EMI</h2>
+                <form id="form-emi" class="space-y-4">
+                    <div>
+                        <input type="text" id="emi-name" placeholder="EMI Designation (e.g., HDFC Car Loan)" required class="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-emerald-600">
+                    </div>
+                    <div>
+                        <input type="number" id="emi-amount" placeholder="Monthly Payment (₹)" required class="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-emerald-600">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-400 uppercase mb-1">Deduction Day of Month</label>
+                        <select id="emi-day" required class="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-emerald-600"></select>
+                    </div>
+                    <button type="submit" class="w-full py-2.5 bg-emerald-600 text-white font-semibold text-sm rounded-xl hover:bg-emerald-700">Add EMI Track</button>
+                </form>
+            </div>
+            <div class="lg:col-span-2 bg-white rounded-2xl p-5 shadow-sm border border-slate-100">
+                <h2 class="text-lg font-semibold text-slate-800 mb-4"><i class="fa-solid fa-clock text-emerald-600 mr-1"></i> Scheduled Recurring Debits</h2>
+                <div id="emi-list" class="space-y-2 max-h-[450px] overflow-y-auto"></div>
+            </div>
+        </div>
+
+        <div id="content-cards" class="tab-content hidden grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 h-fit">
+                <h2 class="text-lg font-semibold text-slate-800 mb-4"><i class="fa-solid fa-square-plus text-emerald-600 mr-1"></i> Swipe Credit Card Entry</h2>
+                <form id="form-cc" class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-400 uppercase mb-1">Select Active Card</label>
+                        <select id="cc-cardname" required class="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-emerald-600">
+                            <option value="HDFC Regalia">💳 HDFC Regalia</option>
+                            <option value="SBI Card Elite">💳 SBI Card Elite</option>
+                            <option value="ICICI Amazon Pay">💳 ICICI Amazon Pay</option>
+                            <option value="Axis Ace">💳 Axis Ace</option>
+                        </select>
+                    </div>
+                    <div>
+                        <input type="text" id="cc-desc" placeholder="Merchant Name / Description" required class="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-emerald-600">
+                    </div>
+                    <div>
+                        <div class="flex gap-1 mb-1.5 text-[11px] font-semibold">
+                            <button type="button" onclick="quickAmt('cc-amount', 50)" class="bg-slate-100 border border-slate-200 text-slate-700 px-2.5 py-1 rounded-lg hover:bg-slate-200 transition-colors shadow-sm">+50</button>
+                            <button type="button" onclick="quickAmt('cc-amount', 100)" class="bg-slate-100 border border-slate-200 text-slate-700 px-2.5 py-1 rounded-lg hover:bg-slate-200 transition-colors shadow-sm">+100</button>
+                            <button type="button" onclick="quickAmt('cc-amount', 500)" class="bg-slate-100 border border-slate-200 text-slate-700 px-2.5 py-1 rounded-lg hover:bg-slate-200 transition-colors shadow-sm">+500</button>
+                        </div>
+                        <input type="number" id="cc-amount" placeholder="Amount (₹)" required class="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-emerald-600">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-400 uppercase mb-1">Transaction Date</label>
+                        <input type="date" id="cc-date" required class="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-emerald-600">
+                    </div>
+                    <button type="submit" class="w-full py-2.5 bg-emerald-600 text-white font-semibold text-sm rounded-xl hover:bg-emerald-700">Save CC Spend</button>
+                </form>
+            </div>
+            
+            <div class="lg:col-span-2 bg-white rounded-2xl p-5 shadow-sm border border-slate-100">
+                <h2 class="text-lg font-semibold text-slate-800 mb-4"><i class="fa-solid fa-receipt text-emerald-600 mr-1"></i> Statement History & Due Setup</h2>
+                
+                <div class="bg-white p-4 rounded-xl mb-4 border border-slate-200 grid grid-cols-1 md:grid-cols-2 gap-4 shadow-sm">
+                    <div class="border border-slate-100 p-3 rounded-xl bg-slate-50/50">
+                        <h4 class="text-xs font-bold text-indigo-600 mb-2 uppercase tracking-wider">HDFC Statement Loop</h4>
+                        <div class="grid grid-cols-2 gap-2 text-xs">
+                            <label class="text-slate-500 font-medium">Bill Day: <input type="number" id="cc-gen-hdfc" min="1" max="31" value="15" onchange="saveCardMeta()" class="w-full px-2 py-1 mt-0.5 rounded-lg border border-slate-200 bg-white text-slate-800 focus:outline-none"></label>
+                            <label class="text-slate-500 font-medium">Due Day: <input type="number" id="cc-due-hdfc" min="1" max="31" value="5" onchange="saveCardMeta()" class="w-full px-2 py-1 mt-0.5 rounded-lg border border-slate-200 bg-white text-slate-800 focus:outline-none"></label>
+                        </div>
+                    </div>
+                    <div class="border border-slate-100 p-3 rounded-xl bg-slate-50/50">
+                        <h4 class="text-xs font-bold text-emerald-600 mb-2 uppercase tracking-wider">SBI Card Loop</h4>
+                        <div class="grid grid-cols-2 gap-2 text-xs">
+                            <label class="text-slate-500 font-medium">Bill Day: <input type="number" id="cc-gen-sbi" min="1" max="31" value="20" onchange="saveCardMeta()" class="w-full px-2 py-1 mt-0.5 rounded-lg border border-slate-200 bg-white text-slate-800 focus:outline-none"></label>
+                            <label class="text-slate-500 font-medium">Due Day: <input type="number" id="cc-due-sbi" min="1" max="31" value="10" onchange="saveCardMeta()" class="w-full px-2 py-1 mt-0.5 rounded-lg border border-slate-200 bg-white text-slate-800 focus:outline-none"></label>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="cc-list" class="space-y-2 max-h-[450px] overflow-y-auto"></div>
+            </div>
+        </div>
+
+    </main>
+
+    <div id="statement-image-template" class="absolute left-[-9999px] top-[-9999px] w-[1000px] bg-slate-950 p-10 rounded-3xl"></div>
+
+    <script>
+        // --- 31-DAY AUTOMATIC RETENTION AND EXPIRY SYSTEM ---
+        function purgeExpiredData() {
+            const currentTimestamp = Date.now();
+            const maxRetentionPeriodMs = 31 * 24 * 60 * 60 * 1000; // 31 Days in Milliseconds
+
+            // Fetch current stored lists
+            let localTxs = JSON.parse(localStorage.getItem('mx_txs')) || [];
+            let localFriends = JSON.parse(localStorage.getItem('mx_friends')) || [];
+            let localEmis = JSON.parse(localStorage.getItem('mx_emis')) || [];
+            let localCards = JSON.parse(localStorage.getItem('mx_cards')) || [];
+
+            // Filter out items that are older than 31 days based on their entry ID timestamp
+            txs = localTxs.filter(item => (currentTimestamp - item.id) < maxRetentionPeriodMs);
+            friends = localFriends.filter(item => (currentTimestamp - item.id) < maxRetentionPeriodMs);
+            emis = localEmis.filter(item => (currentTimestamp - item.id) < maxRetentionPeriodMs);
+            cards = localCards.filter(item => (currentTimestamp - item.id) < maxRetentionPeriodMs);
+
+            // Resave the fresh datasets back to browser storage
+            localStorage.setItem('mx_txs', JSON.stringify(txs));
+            localStorage.setItem('mx_friends', JSON.stringify(friends));
+            localStorage.setItem('mx_emis', JSON.stringify(emis));
+            localStorage.setItem('mx_cards', JSON.stringify(cards));
+        }
+
+        // --- CLEAR ENTIRE WORKSPACE FUNCTION WITH SAFEGUARD ---
+        function clearAllDataWithConfirmation() {
+            const userConfirmed = confirm("Are you absolutely sure you want to clear all transactions, friends balance logs, EMIs, and credit logs? This cannot be undone.");
+            if (userConfirmed) {
+                txs = [];
+                friends = [];
+                emis = [];
+                cards = [];
+                updateAll();
+                alert("Workspace reset completed successfully.");
+            }
+        }
+
+        // Run the 31-day data cleaning cycle immediately on launch / refresh
+        purgeExpiredData();
+
+        let cardMeta = JSON.parse(localStorage.getItem('mx_card_meta')) || { hdfc_gen: 15, hdfc_due: 5, sbi_gen: 20, sbi_due: 10 };
+        let expenseChart = null;
+
+        const fRup = (num) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(num);
+
+        function toggleDarkMode() {
+            const isDark = document.documentElement.classList.toggle('dark');
+            localStorage.setItem('theme', isDark ? 'dark' : 'light');
+            document.getElementById('theme-icon').className = isDark ? "fa-solid fa-sun" : "fa-solid fa-moon";
+            updateChart();
+        }
+
+        function quickAmt(fieldId, val) {
+            const input = document.getElementById(fieldId);
+            const curr = parseFloat(input.value) || 0;
+            input.value = curr + val;
+        }
+
+        function saveCardMeta() {
+            cardMeta.hdfc_gen = parseInt(document.getElementById('cc-gen-hdfc').value) || 15;
+            cardMeta.hdfc_due = parseInt(document.getElementById('cc-due-hdfc').value) || 5;
+            cardMeta.sbi_gen = parseInt(document.getElementById('cc-gen-sbi').value) || 20;
+            cardMeta.sbi_due = parseInt(document.getElementById('cc-due-sbi').value) || 10;
+            localStorage.setItem('mx_card_meta', JSON.stringify(cardMeta));
+            checkGlobalAlerts();
+        }
+
+        function loadCardMetaInputs() {
+            document.getElementById('cc-gen-hdfc').value = cardMeta.hdfc_gen;
+            document.getElementById('cc-due-hdfc').value = cardMeta.hdfc_due;
+            document.getElementById('cc-gen-sbi').value = cardMeta.sbi_gen;
+            document.getElementById('cc-due-sbi').value = cardMeta.sbi_due;
+        }
+
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.getElementById(`content-${tabId}`).classList.remove('hidden');
+            document.querySelectorAll('[id^="tab-"]').forEach(el => {
+                el.classList.remove('border-emerald-600', 'text-emerald-600');
+                el.classList.add('border-transparent', 'text-slate-500');
+            });
+            const activeTab = document.getElementById(`tab-${tabId}`);
+            activeTab.classList.remove('border-transparent', 'text-slate-500');
+            activeTab.classList.add('border-emerald-600', 'text-emerald-600');
+        }
+
+        function toggleTxStyle() {
+            const inc = document.querySelector('input[name="txType"]:checked').value === 'income';
+            document.getElementById('tx-income-lbl').className = inc ? "cursor-pointer border-2 border-teal-500 bg-teal-50/50 text-teal-700 rounded-xl p-2.5 flex items-center justify-center font-medium text-sm transition-all" : "cursor-pointer border border-slate-200 text-slate-600 rounded-xl p-2.5 flex items-center justify-center font-medium text-sm transition-all";
+            document.getElementById('tx-expense-lbl').className = !inc ? "cursor-pointer border-2 border-rose-500 bg-rose-50/50 text-rose-700 rounded-xl p-2.5 flex items-center justify-center font-medium text-sm transition-all" : "cursor-pointer border border-slate-200 text-slate-600 rounded-xl p-2.5 flex items-center justify-center font-medium text-sm transition-all";
+        }
+        function toggleFrStyle() {
+            const bor = document.querySelector('input[name="frType"]:checked').value === 'borrowed';
+            document.getElementById('fr-borrow-lbl').className = bor ? "cursor-pointer border-2 border-rose-500 bg-rose-50/50 text-rose-700 rounded-xl p-2.5 flex items-center justify-center font-medium text-xs transition-all" : "cursor-pointer border border-slate-200 text-slate-600 rounded-xl p-2.5 flex items-center justify-center font-medium text-xs transition-all";
+            document.getElementById('fr-lend-lbl').className = !bor ? "cursor-pointer border-2 border-teal-500 bg-teal-50/50 text-teal-700 rounded-xl p-2.5 flex items-center justify-center font-medium text-xs transition-all" : "cursor-pointer border border-slate-200 text-slate-600 rounded-xl p-2.5 flex items-center justify-center font-medium text-xs transition-all";
+        }
+
+        function isEmiPaidThisMonth(emiId) {
+            const now = new Date();
+            return txs.some(t => t.emiRefId === emiId && t.paidMonth === now.getMonth() && t.paidYear === now.getFullYear());
+        }
+
+        function updateAll() {
+            localStorage.setItem('mx_txs', JSON.stringify(txs));
+            localStorage.setItem('mx_friends', JSON.stringify(friends));
+            localStorage.setItem('mx_emis', JSON.stringify(emis));
+            localStorage.setItem('mx_cards', JSON.stringify(cards));
+
+            let inc = txs.filter(t => t.type === 'income').reduce((s,t) => s + t.amount, 0);
+            let exp = txs.filter(t => t.type === 'expense').reduce((s,t) => s + t.amount, 0);
+            document.getElementById('dash-balance').innerText = fRup(inc - exp);
+
+            let grandFrNet = 0;
+            friends.forEach(f => grandFrNet += (f.type === 'lent' ? f.amount : -f.amount));
+            const frEl = document.getElementById('dash-friends');
+            frEl.innerText = fRup(Math.abs(grandFrNet));
+            document.getElementById('dash-friends-sub').innerText = grandFrNet > 0 ? "Net you will receive" : grandFrNet < 0 ? "Net total you owe" : "All settled up";
+            frEl.className = grandFrNet > 0 ? "text-xl font-bold text-teal-600 mt-1" : grandFrNet < 0 ? "text-xl font-bold text-rose-600 mt-1" : "text-xl font-bold text-slate-900 mt-1";
+
+            const now = new Date();
+            const curMonth = now.getMonth();
+            const curYear = now.getFullYear();
+
+            let lastMonth = curMonth - 1;
+            let lastYear = curYear;
+            if (lastMonth < 0) { lastMonth = 11; lastYear--; }
+
+            let currentMonthSum = 0;
+            let lastMonthSum = 0;
+
+            cards.forEach(c => {
+                const cDate = new Date(c.date);
+                if (cDate.getFullYear() === curYear && cDate.getMonth() === curMonth) {
+                    currentMonthSum += c.amount;
+                } else if (cDate.getFullYear() === lastYear && cDate.getMonth() === lastMonth) {
+                    lastMonthSum += c.amount;
+                }
+            });
+
+            document.getElementById('dash-cc-current').innerText = fRup(currentMonthSum);
+            document.getElementById('dash-cc-last').innerText = `Last Month: ${fRup(lastMonthSum)}`;
+
+            let totalPendingEmi = 0;
+            let totalOverhead = 0;
+            emis.forEach(e => {
+                totalOverhead += e.amount;
+                if (!isEmiPaidThisMonth(e.id)) {
+                    totalPendingEmi += e.amount;
+                }
+            });
+            document.getElementById('dash-emis').innerText = fRup(totalPendingEmi);
+            document.getElementById('dash-emis-sub').innerText = `Total Overhead: ${fRup(totalOverhead)}/mo`;
+
+            checkGlobalAlerts();
+            renderTxList();
+            renderFriendList();
+            renderEmiList();
+            renderCcList();
+            updateChart();
+        }
+
+        function checkGlobalAlerts() {
+            const container = document.getElementById('alerts-container');
+            container.innerHTML = '';
+            let triggerAlert = false;
+            const now = new Date();
+            const todayDay = now.getDate();
+
+            emis.forEach(e => {
+                if (isEmiPaidThisMonth(e.id)) return;
+                const targetDay = parseInt(e.day);
+                let diffDays = targetDay - todayDay;
+                if (diffDays >= 0 && diffDays <= 2) {
+                    triggerAlert = true;
+                    const alertDiv = document.createElement('div');
+                    alertDiv.className = "bg-amber-50 dark:bg-amber-950/40 border-l-4 border-amber-500 text-amber-900 dark:text-amber-200 p-3 rounded-r-xl flex items-center justify-between text-xs font-semibold shadow-sm animate-pulse";
+                    alertDiv.innerHTML = `
+                        <div class="flex items-center gap-2">
+                            <i class="fa-solid fa-bell text-amber-600 text-sm"></i>
+                            <span><strong>EMI Due:</strong> ${e.name} (${fRup(e.amount)}) is due ${diffDays === 0 ? 'Today' : 'in ' + diffDays + ' days'}</span>
+                        </div>
+                        <button onclick="payEmiDirectly(${e.id})" class="bg-amber-600 text-white px-2.5 py-1 rounded-md text-[11px] font-bold">Mark Paid</button>
+                    `;
+                    container.appendChild(alertDiv);
+                }
+            });
+
+            const cardConfigs = [
+                { name: 'HDFC Regalia', due: cardMeta.hdfc_due },
+                { name: 'SBI Card Elite', due: cardMeta.sbi_due }
+            ];
+            cardConfigs.forEach(config => {
+                let diff = config.due - todayDay;
+                if (diff >= 0 && diff <= 3) {
+                    triggerAlert = true;
+                    const alertDiv = document.createElement('div');
+                    alertDiv.className = "bg-indigo-50 dark:bg-indigo-950/40 border-l-4 border-indigo-500 text-indigo-900 dark:text-indigo-200 p-3 rounded-r-xl flex items-center justify-between text-xs font-semibold shadow-sm";
+                    alertDiv.innerHTML = `
+                        <div class="flex items-center gap-2">
+                            <i class="fa-solid fa-credit-card text-indigo-600 text-sm"></i>
+                            <span><strong>Card Due Soon:</strong> ${config.name} payment cycle deadline is in ${diff} days (Day ${config.due}).</span>
+                        </div>
+                    `;
+                    container.appendChild(alertDiv);
+                }
+            });
+
+            container.className = triggerAlert ? "space-y-2" : "hidden";
+        }
+
+        function settleFriendDirectly(name, netAmount) {
+            if(netAmount === 0) return;
+            const absoluteAmount = Math.abs(netAmount);
+            friends.push({ id: Date.now(), type: netAmount > 0 ? 'borrowed' : 'lent', name: name, amount: absoluteAmount, notes: `Auto Settlement Balance Cleared` });
+            txs.push({ id: Date.now() + 1, type: netAmount > 0 ? 'income' : 'expense', desc: `Settled peer: ${name}`, amount: absoluteAmount, cat: 'Others' });
+            updateAll();
+        }
+
+        function payEmiDirectly(id) {
+            const targetEmi = emis.find(e => e.id === id);
+            if (targetEmi) {
+                const now = new Date();
+                txs.push({ id: Date.now(), type: 'expense', desc: `Paid EMI: ${targetEmi.name}`, amount: targetEmi.amount, cat: 'EMI Payments', emiRefId: targetEmi.id, paidMonth: now.getMonth(), paidYear: now.getFullYear() });
+                updateAll();
+            }
+        }
+
+        function generateImageStatement() {
+            const now = new Date();
+            const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+            const currentMonthName = months[now.getMonth()];
+            
+            let inc = txs.filter(t => t.type === 'income').reduce((s,t) => s + t.amount, 0);
+            let exp = txs.filter(t => t.type === 'expense').reduce((s,t) => s + t.amount, 0);
+            let grandFrNet = friends.reduce((s,f) => s + (f.type === 'lent' ? f.amount : -f.amount), 0);
+            let totalCcSum = cards.reduce((s,c)=>s+c.amount,0);
+            let totalEmiOverhead = emis.reduce((s,e)=>s+e.amount,0);
+
+            const tpl = document.getElementById('statement-image-template');
+            
+            tpl.innerHTML = `
+                <div class="bg-slate-950 text-slate-100 font-sans p-8 rounded-3xl border border-slate-800 shadow-2xl">
+                    <div class="flex justify-between items-start border-b border-slate-800 pb-6 mb-6">
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <div class="bg-emerald-500 text-slate-950 p-2 rounded-xl text-lg font-black shadow-lg"><i class="fa-solid fa-wallet"></i></div>
+                                <h1 class="text-2xl font-black text-white">My Wallet</h1>
+                            </div>
+                            <p class="text-[11px] text-slate-400 mt-1.5 uppercase font-semibold">Premium Multi-Tab Account Ledger Report</p>
+                        </div>
+                        <div class="text-right">
+                            <span class="bg-gradient-to-r from-emerald-500/20 to-teal-500/20 border border-emerald-500/40 text-emerald-300 font-bold px-4 py-1.5 rounded-xl text-xs">${currentMonthName} ${now.getFullYear()}</span>
+                            <p class="text-[10px] text-slate-500 mt-2">Issued: ${now.toLocaleDateString()}</p>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-4 gap-4 mb-8">
+                        <div class="bg-slate-900 p-4 rounded-xl border border-slate-800 flex flex-col justify-between">
+                            <span class="text-[10px] text-slate-400 uppercase font-bold">Liquid Balance</span>
+                            <span class="text-xl font-black text-emerald-400 mt-2">${fRup(inc - exp)}</span>
+                        </div>
+                        <div class="bg-slate-900 p-4 rounded-xl border border-slate-800 flex flex-col justify-between">
+                            <span class="text-[10px] text-slate-400 uppercase font-bold">Peer Ledgers</span>
+                            <span class="text-xl font-black ${grandFrNet >= 0 ? 'text-teal-400' : 'text-rose-400'} mt-2">${fRup(Math.abs(grandFrNet))}</span>
+                        </div>
+                        <div class="bg-slate-900 p-4 rounded-xl border border-slate-800 flex flex-col justify-between">
+                            <span class="text-[10px] text-slate-400 uppercase font-bold">Active EMIs</span>
+                            <span class="text-xl font-black text-amber-400 mt-2">${fRup(totalEmiOverhead)}</span>
+                        </div>
+                        <div class="bg-slate-900 p-4 rounded-xl border border-slate-800 flex flex-col justify-between">
+                            <span class="text-[10px] text-slate-400 uppercase font-bold">Credit Spends</span>
+                            <span class="text-xl font-black text-indigo-400 mt-2">${fRup(totalCcSum)}</span>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-6 items-start">
+                        <div class="space-y-6">
+                            <div class="bg-slate-900/50 p-4 rounded-2xl border border-slate-800">
+                                <h3 class="text-xs font-bold text-emerald-400 mb-3 uppercase flex items-center gap-1.5 border-b border-slate-800 pb-2">Tab 1: Cash & Bank Logs</h3>
+                                <div class="space-y-2">
+                                    ${txs.length === 0 ? '<p class="text-[10px] text-slate-500 py-2">No records captured.</p>' : 
+                                    txs.slice(0, 5).map(t => `
+                                        <div class="flex justify-between items-center bg-slate-950 px-3 py-2 rounded-xl text-xs border-l-4 ${t.type==='income'?'border-teal-500':'border-rose-500'}">
+                                            <div><p class="text-slate-100 font-bold">${t.desc}</p><span class="text-[9px] text-slate-400">${t.cat}</span></div>
+                                            <span class="font-bold text-sm ${t.type==='income'?'text-teal-400':'text-rose-400'}">${t.type==='income'?'+':'-'}${fRup(t.amount)}</span>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="space-y-6">
+                            <div class="bg-slate-900/50 p-4 rounded-2xl border border-slate-800">
+                                <h3 class="text-xs font-bold text-teal-400 mb-3 uppercase flex items-center gap-1.5 border-b border-slate-800 pb-2">Tab 2: Friends Ledger</h3>
+                                <div class="space-y-2">
+                                    ${friends.length === 0 ? '<p class="text-[10px] text-slate-500 py-2">No records logged.</p>' : 
+                                    friends.slice(0, 5).map(f => `
+                                        <div class="flex justify-between items-center bg-slate-950 px-3 py-2 rounded-xl text-xs border-l-4 ${f.type==='lent'?'border-teal-500':'border-rose-500'}">
+                                            <div><p class="text-slate-100 font-bold">${f.name}</p></div>
+                                            <span class="font-bold text-slate-200">${fRup(f.amount)}</span>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            setTimeout(() => {
+                html2canvas(tpl, { scale: 2, backgroundColor: "#020617", logging: false, useCORS: true }).then(canvas => {
+                    const link = document.createElement("a");
+                    link.href = canvas.toDataURL("image/png");
+                    link.download = `Wallet_Statement_${currentMonthName}_2026.png`;
+                    link.click();
+                });
+            }, 120);
+        }
+
+        function renderTxList() {
+            const box = document.getElementById('tx-list'); box.innerHTML = '';
+            const query = document.getElementById('tx-search').value.toLowerCase().trim();
+            let filtered = txs.filter(t => query === "" || t.desc.toLowerCase().includes(query) || t.cat.toLowerCase().includes(query));
+
+            if (!filtered.length) { box.innerHTML = '<p class="text-xs text-slate-400 py-4 text-center">No structural entries matching query.</p>'; return; }
+            [...filtered].reverse().slice(0, 15).forEach(t => {
+                const item = document.createElement('div');
+                item.className = "flex justify-between items-center bg-slate-50 border border-slate-100 p-2.5 rounded-xl text-xs";
+                item.innerHTML = `<div><p class="font-bold text-slate-700">${t.desc}</p><span class="text-[10px] text-slate-400">${t.cat}</span></div>
+                <div class="flex items-center gap-2"><span class="font-bold ${t.type==='income'?'text-teal-600':'text-rose-600'}">${t.type==='income'?'+':'-'}${fRup(t.amount)}</span>
+                <button onclick="delItem('tx', ${t.id})" class="text-slate-300 hover:text-rose-600"><i class="fa-solid fa-trash-can"></i></button></div>`;
+                box.appendChild(item);
+            });
+        }
+
+        function renderFriendList() {
+            const box = document.getElementById('friend-list'); box.innerHTML = '';
+            if (!friends.length) { box.innerHTML = '<p class="text-xs text-slate-400 py-4 text-center">No transaction records logged.</p>'; return; }
+
+            let maps = {};
+            friends.forEach(f => {
+                let nameKey = f.name.trim();
+                if (!maps[nameKey]) maps[nameKey] = { total: 0, items: [] };
+                maps[nameKey].items.push(f);
+                maps[nameKey].total += (f.type === 'lent' ? f.amount : -f.amount);
+            });
+
+            for (let name in maps) {
+                const group = maps[name];
+                const card = document.createElement('div');
+                card.className = "bg-slate-50/50 border border-slate-200 p-4 rounded-2xl space-y-3 shadow-sm";
+                let balanceColor = group.total > 0 ? 'text-teal-600' : group.total < 0 ? 'text-rose-600' : 'text-slate-500';
+                let balanceText = group.total > 0 ? `Lent (You get back ₹${Math.abs(group.total)})` : group.total < 0 ? `Borrowed (You owe ₹${Math.abs(group.total)})` : 'Fully Settled Up';
+
+                let itemRows = group.items.map(item => `
+                    <div class="flex justify-between items-center bg-white border border-slate-100 px-3 py-2 rounded-xl text-xs">
+                        <div><span class="font-medium text-slate-700">${item.notes || 'Fund Entry'}</span></div>
+                        <div class="flex items-center gap-2"><span class="font-bold ${item.type === 'lent' ? 'text-teal-600' : 'text-rose-600'}">${fRup(item.amount)}</span>
+                        <button onclick="delItem('friend', ${item.id})" class="text-slate-300 hover:text-rose-600"><i class="fa-solid fa-xmark"></i></button></div>
+                    </div>
+                `).join('');
+
+                card.innerHTML = `
+                    <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center border-b border-slate-200 pb-2 gap-2">
+                        <div><h3 class="font-bold text-sm text-slate-800">${name}</h3><span class="text-xs font-bold ${balanceColor}">${balanceText}</span></div>
+                        ${group.total !== 0 ? `<button onclick="settleFriendDirectly('${name.replace(/'/g, "\\'")}', ${group.total})" class="bg-teal-600 hover:bg-teal-700 text-white font-bold text-[10px] px-2 py-1 rounded-lg flex items-center gap-1 shadow-sm"><i class="fa-solid fa-handshake"></i> Settle Up</button>`:''}
+                    </div>
+                    <div class="space-y-1.5">${itemRows}</div>
+                `;
+                box.appendChild(card);
+            }
+        }
+
+        function renderEmiList() {
+            const box = document.getElementById('emi-list'); box.innerHTML = '';
+            if (!emis.length) { box.innerHTML = '<p class="text-xs text-slate-400 py-4 text-center">No active configured entries.</p>'; return; }
+            [...emis].sort((a,b)=>parseInt(a.day)-parseInt(b.day)).forEach(e => {
+                const item = document.createElement('div');
+                item.className = "flex justify-between items-center bg-white border border-slate-100 p-3 rounded-xl text-xs shadow-sm";
+                item.innerHTML = `
+                    <div><div class="flex items-center gap-2"><p class="font-bold text-slate-800 text-sm">${e.name}</p></div><p class="text-slate-500 text-[10px] mt-0.5">Day ${e.day} of month</p></div>
+                    <div class="flex items-center gap-3"><p class="font-bold text-slate-800 text-sm">${fRup(e.amount)}</p>
+                    <button onclick="delItem('emi', ${e.id})" class="text-slate-300 hover:text-rose-600"><i class="fa-solid fa-trash-can"></i></button></div>
+                `;
+                box.appendChild(item);
+            });
+        }
+
+        function renderCcList() {
+            const box = document.getElementById('cc-list'); box.innerHTML = '';
+            if (!cards.length) { box.innerHTML = '<p class="text-xs text-slate-400 py-4 text-center">No statements captured.</p>'; return; }
+            [...cards].sort((a,b)=>new Date(b.date)-new Date(a.date)).forEach(c => {
+                const item = document.createElement('div');
+                item.className = "flex justify-between items-center bg-white border border-slate-200 p-3 rounded-xl text-xs border-l-4 border-indigo-500 shadow-sm";
+                item.innerHTML = `<div><p class="font-bold text-slate-800">${c.desc}</p>
+                <div class="flex gap-2 items-center mt-0.5"><span class="text-[9px] text-indigo-600 font-bold bg-indigo-50 px-1 rounded">${c.name}</span><span class="text-[9px] text-slate-400">${c.date}</span></div></div>
+                <div class="flex items-center gap-3"><span class="font-bold text-rose-600">${fRup(c.amount)}</span>
+                <button onclick="delItem('cc', ${c.id})" class="text-slate-300 hover:text-rose-600"><i class="fa-solid fa-trash-can"></i></button></div>`;
+                box.appendChild(item);
+            });
+        }
+
+        document.getElementById('form-transaction').addEventListener('submit', (e)=>{
+            e.preventDefault();
+            txs.push({ id: Date.now(), type: document.querySelector('input[name="txType"]:checked').value, desc: document.getElementById('tx-desc').value.trim(), amount: parseFloat(document.getElementById('tx-amount').value), cat: document.getElementById('tx-cat').value });
+            document.getElementById('tx-desc').value=''; document.getElementById('tx-amount').value=''; updateAll();
+        });
+
+        document.getElementById('form-friend').addEventListener('submit', (e)=>{
+            e.preventDefault();
+            friends.push({ id: Date.now(), type: document.querySelector('input[name="frType"]:checked').value, name: document.getElementById('fr-name').value.trim(), amount: parseFloat(document.getElementById('fr-amount').value), notes: document.getElementById('fr-notes').value.trim() });
+            document.getElementById('fr-name').value=''; document.getElementById('fr-amount').value=''; document.getElementById('fr-notes').value=''; updateAll();
+        });
+
+        document.getElementById('form-emi').addEventListener('submit', (e)=>{
+            e.preventDefault();
+            emis.push({ id: Date.now(), name: document.getElementById('emi-name').value.trim(), amount: parseFloat(document.getElementById('emi-amount').value), day: document.getElementById('emi-day').value });
+            document.getElementById('emi-name').value=''; document.getElementById('emi-amount').value=''; updateAll();
+        });
+
+        document.getElementById('form-cc').addEventListener('submit', (e)=>{
+            e.preventDefault();
+            cards.push({ id: Date.now(), name: document.getElementById('cc-cardname').value, desc: document.getElementById('cc-desc').value.trim(), amount: parseFloat(document.getElementById('cc-amount').value), date: document.getElementById('cc-date').value });
+            document.getElementById('cc-desc').value=''; document.getElementById('cc-amount').value=''; updateAll();
+        });
+
+        function delItem(type, id) {
+            if (type==='tx') txs = txs.filter(x=>x.id!==id);
+            if (type==='friend') friends = friends.filter(x=>x.id!==id);
+            if (type==='emi') emis = emis.filter(x=>x.id!==id);
+            if (type==='cc') cards = cards.filter(x=>x.id!==id);
+            updateAll();
+        }
+
+        function updateChart() {
+            const categories = ['Chaya & Snacks', 'Food & Dining', 'Entertainment', 'Travel', 'Groceries', 'EMI Payments', 'Others'];
+            const categoryTotals = categories.map(cat => txs.filter(t => t.cat === cat && t.type === 'expense').reduce((sum, t) => sum + t.amount, 0));
+            const hasExp = categoryTotals.some(v => v > 0);
+            const isDark = document.documentElement.classList.contains('dark');
+
+            const data = {
+                labels: hasExp ? categories : ['No Data'],
+                datasets: [{ data: hasExp ? categoryTotals : [1], backgroundColor: hasExp ? ['#eab308', '#f97316', '#a855f7', '#06b6d4', '#22c55e', '#ef4444', '#94a3b8'] : (isDark ? ['#334155'] : ['#e2e8f0']), borderWidth: 0 }]
+            };
+
+            if (expenseChart) {
+                expenseChart.data = data; 
+                expenseChart.options.plugins.legend.labels.color = isDark ? '#f1f5f9' : '#334155';
+                expenseChart.update();
+            } else {
+                expenseChart = new Chart(document.getElementById('expenseChart').getContext('2d'), {
+                    type: 'doughnut',
+                    data: data,
+                    options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 10 }, color: isDark ? '#f1f5f9' : '#334155' } } }, cutout: '76%' }
+                });
+            }
+        }
+
+        const daySelect = document.getElementById('emi-day');
+        for (let i = 1; i <= 31; i++) {
+            let opt = document.createElement('option'); opt.value = i; opt.innerText = `Day ${i}`; daySelect.appendChild(opt);
+        }
+
+        document.getElementById('cc-date').value = new Date().toISOString().split('T')[0];
+        loadCardMetaInputs();
+        updateAll();
+    </script>
+</body>
+</html>
