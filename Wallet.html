@@ -8,16 +8,9 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-    <!-- ✅ FIREBASE SDK -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
         import { getFirestore, doc, setDoc, onSnapshot, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-
-        // ============================================================
-        // 🔴 REPLACE THESE WITH YOUR REAL FIREBASE PROJECT CONFIG
-        //    Go to: https://console.firebase.google.com
-        //    Project Settings → Your Apps → Web App → Config
-        // ============================================================
         const firebaseConfig = {
           apiKey: "AIzaSyA5396OxQ5ISHRQ9e_o7gM3Lvt9m9vVj_M",
           authDomain: "my-wallet-a653c.firebaseapp.com",
@@ -27,27 +20,20 @@
           appId: "1:330800076603:web:fa259b1ef659ab7d76c91e",
           measurementId: "G-L2RPF60HNL"
         };
-
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
         const DATA_DOC = doc(db, "wallet", "shared_data");
-
-        // Expose to global scope FIRST (sync)
         window._db = db;
         window._dataDoc = DATA_DOC;
         window._setDoc = setDoc;
         window._onSnapshot = onSnapshot;
         window._getDoc = getDoc;
-
-        // Apply saved theme (async, but non-blocking)
         try {
             const snap = await getDoc(DATA_DOC);
             if (snap.exists() && snap.data().theme === 'dark') {
                 document.documentElement.classList.add('dark');
             }
         } catch(e) {}
-
-        // Signal ready LAST — after all setup done
         window._firebaseReady = true;
     </script>
     <style>
@@ -60,6 +46,8 @@
         .dark .text-slate-400 { color: #94a3b8 !important; }
         .dark .bg-slate-50 { background-color: #1e293b !important; }
         .dark .bg-slate-50\/50 { background-color: #1e293b\/50 !important; }
+        /* Budget bar animation */
+        .budget-bar { transition: width 0.6s ease; }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-800 font-sans antialiased pb-12 transition-colors duration-200">
@@ -87,14 +75,13 @@
                 <button onclick="switchTab('friends')" id="tab-friends" class="py-3 px-4 border-b-2 border-transparent text-slate-500 hover:text-slate-700 flex items-center gap-1.5"><i class="fa-solid fa-users"></i> Friends</button>
                 <button onclick="switchTab('emis')" id="tab-emis" class="py-3 px-4 border-b-2 border-transparent text-slate-500 hover:text-slate-700 flex items-center gap-1.5"><i class="fa-solid fa-calendar-check"></i> EMIs</button>
                 <button onclick="switchTab('cards')" id="tab-cards" class="py-3 px-4 border-b-2 border-transparent text-slate-500 hover:text-slate-700 flex items-center gap-1.5"><i class="fa-solid fa-credit-card"></i> Cards</button>
+                <button onclick="switchTab('goals')" id="tab-goals" class="py-3 px-4 border-b-2 border-transparent text-slate-500 hover:text-slate-700 flex items-center gap-1.5"><i class="fa-solid fa-bullseye"></i> Goals</button>
             </div>
-            
             <div class="flex items-center gap-2 my-2">
                 <button onclick="clearAllDataWithConfirmation()" title="Clear All Ledger Data" class="bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-600 px-3 py-1.5 rounded-xl flex items-center gap-1.5 text-xs font-semibold shadow-sm transition-all">
                     <i class="fa-solid fa-trash-can"></i>
                     <span class="hidden sm:inline">Clear Workspace</span>
                 </button>
-
                 <button onclick="generateImageStatement()" title="Save Month Details (Download Image)" class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-xl flex items-center gap-2 text-xs font-semibold shadow-sm transition-all hover:scale-105">
                     <i class="fa-solid fa-file-invoice-dollar"></i>
                     <span class="hidden sm:inline">Export Statement</span>
@@ -107,11 +94,13 @@
 
         <div id="alerts-container" class="hidden space-y-2"></div>
 
+        <!-- ==================== DASHBOARD TAB ==================== -->
         <div id="content-dashboard" class="tab-content space-y-6">
 
+            <!-- Summary Cards -->
             <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 bg-gradient-to-br from-white to-teal-50/20 dark:to-teal-950/10">
-                    <p class="text-xs font-medium text-teal-600 dark:text-teal-400 uppercase tracking-wider flex items-center gap-1"><i class="fa-solid fa-shield-halved"></i> Safe To Spend</p>
+                <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 bg-gradient-to-br from-white to-teal-50/20">
+                    <p class="text-xs font-medium text-teal-600 uppercase tracking-wider flex items-center gap-1"><i class="fa-solid fa-shield-halved"></i> Safe To Spend</p>
                     <h3 id="dash-balance" class="text-xl font-black text-slate-900 mt-1">₹0</h3>
                     <p class="text-[10px] text-slate-400 mt-0.5" id="dash-balance-sub">EMI Overhead Reserved</p>
                 </div>
@@ -132,7 +121,14 @@
                 </div>
             </div>
 
+            <!-- Monthly Bar Chart (Feature 4) -->
+            <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-100">
+                <h2 class="text-sm font-semibold text-slate-800 mb-4 flex items-center gap-2"><i class="fa-solid fa-chart-bar text-emerald-600"></i> Monthly Income vs Expense Trend</h2>
+                <div class="w-full" style="height:220px;"><canvas id="monthlyBarChart"></canvas></div>
+            </div>
+
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Entry Form -->
                 <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 h-fit">
                     <h2 class="text-md font-semibold text-slate-800 mb-4 flex items-center gap-2"><i class="fa-solid fa-circle-plus text-emerald-600"></i> Cash / Bank Entry</h2>
                     <form id="form-transaction" class="space-y-4">
@@ -167,15 +163,32 @@
                                 <option value="Others">📦 Others</option>
                             </select>
                         </div>
+                        <!-- Feature 2: Auto date shown readonly -->
+                        <div class="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-xs text-slate-500">
+                            <i class="fa-solid fa-calendar-day text-emerald-500"></i>
+                            <span>Date: <strong id="tx-auto-date" class="text-slate-700"></strong></span>
+                        </div>
                         <button type="submit" class="w-full py-2.5 bg-emerald-600 text-white font-semibold text-sm rounded-xl shadow-md hover:bg-emerald-700">Save Entry</button>
                     </form>
                 </div>
 
                 <div class="lg:col-span-2 space-y-6">
+                    <!-- Doughnut Chart -->
                     <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 flex flex-col items-center">
                         <h2 class="text-sm font-semibold text-slate-800 self-start mb-2"><i class="fa-solid fa-chart-pie text-emerald-600 mr-1"></i> Liquidity Spending Profile</h2>
                         <div class="w-full max-w-[210px] p-1"><canvas id="expenseChart"></canvas></div>
                     </div>
+
+                    <!-- Feature 1: Budget Limits per Category -->
+                    <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-100">
+                        <div class="flex justify-between items-center mb-3">
+                            <h2 class="text-sm font-semibold text-slate-800"><i class="fa-solid fa-sliders text-emerald-600 mr-1"></i> Monthly Budget Limits</h2>
+                            <button onclick="toggleBudgetEdit()" id="budget-edit-btn" class="text-[10px] bg-emerald-50 border border-emerald-200 text-emerald-700 px-2 py-1 rounded-lg font-bold hover:bg-emerald-100"><i class="fa-solid fa-pen-to-square mr-1"></i>Edit</button>
+                        </div>
+                        <div id="budget-list" class="space-y-2"></div>
+                    </div>
+
+                    <!-- History Logs with filters (Feature 5) -->
                     <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-100">
                         <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-2 mb-3">
                             <h2 class="text-sm font-semibold text-slate-800"><i class="fa-solid fa-history text-emerald-600 mr-1"></i> History Logs</h2>
@@ -184,12 +197,36 @@
                                 <input type="text" id="tx-search" onkeyup="renderTxList()" placeholder="Search desc or category..." class="w-full pl-8 pr-3 py-1 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none">
                             </div>
                         </div>
-                        <div class="max-h-[200px] overflow-y-auto space-y-2" id="tx-list"></div>
+                        <!-- Filter Bar -->
+                        <div class="flex flex-wrap gap-2 mb-3">
+                            <button onclick="setTxFilter('all')" id="filter-all" class="filter-btn text-[10px] px-3 py-1 rounded-full font-bold bg-emerald-600 text-white border border-emerald-600">All</button>
+                            <button onclick="setTxFilter('income')" id="filter-income" class="filter-btn text-[10px] px-3 py-1 rounded-full font-bold bg-slate-100 text-slate-600 border border-slate-200 hover:bg-teal-50">Income</button>
+                            <button onclick="setTxFilter('expense')" id="filter-expense" class="filter-btn text-[10px] px-3 py-1 rounded-full font-bold bg-slate-100 text-slate-600 border border-slate-200 hover:bg-rose-50">Expense</button>
+                            <select id="filter-cat" onchange="renderTxList()" class="text-[10px] px-2 py-1 rounded-full border border-slate-200 bg-slate-100 text-slate-600 focus:outline-none">
+                                <option value="">All Categories</option>
+                                <option value="Chaya & Snacks">☕ Chaya & Snacks</option>
+                                <option value="Food & Dining">🍲 Food & Dining</option>
+                                <option value="Entertainment">🎬 Entertainment</option>
+                                <option value="Salary">💰 Salary</option>
+                                <option value="Travel">🚗 Travel</option>
+                                <option value="Groceries">🛒 Groceries</option>
+                                <option value="EMI Payments">📉 EMI Payments</option>
+                                <option value="Others">📦 Others</option>
+                            </select>
+                            <select id="filter-sort" onchange="renderTxList()" class="text-[10px] px-2 py-1 rounded-full border border-slate-200 bg-slate-100 text-slate-600 focus:outline-none">
+                                <option value="newest">Newest First</option>
+                                <option value="oldest">Oldest First</option>
+                                <option value="highest">Highest Amount</option>
+                                <option value="lowest">Lowest Amount</option>
+                            </select>
+                        </div>
+                        <div class="max-h-[240px] overflow-y-auto space-y-2" id="tx-list"></div>
                     </div>
                 </div>
             </div>
         </div>
 
+        <!-- ==================== FRIENDS TAB ==================== -->
         <div id="content-friends" class="tab-content hidden grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 h-fit">
                 <h2 class="text-lg font-semibold text-slate-800 mb-4"><i class="fa-solid fa-user-plus text-emerald-600 mr-1"></i> Record Mutual Entry</h2>
@@ -216,6 +253,11 @@
                     <div>
                         <input type="text" id="fr-notes" placeholder="Notes (e.g., Tea Share)" class="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-emerald-600">
                     </div>
+                    <!-- Feature 2: Auto date for friend entries -->
+                    <div class="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-xs text-slate-500">
+                        <i class="fa-solid fa-calendar-day text-emerald-500"></i>
+                        <span>Date: <strong id="fr-auto-date" class="text-slate-700"></strong></span>
+                    </div>
                     <button type="submit" class="w-full py-2.5 bg-emerald-600 text-white font-semibold text-sm rounded-xl hover:bg-emerald-700">Add Entry</button>
                 </form>
             </div>
@@ -225,6 +267,7 @@
             </div>
         </div>
 
+        <!-- ==================== EMIs TAB ==================== -->
         <div id="content-emis" class="tab-content hidden grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 h-fit">
                 <h2 class="text-lg font-semibold text-slate-800 mb-4"><i class="fa-solid fa-plus text-emerald-600 mr-1"></i> Add Active Subscription / EMI</h2>
@@ -248,6 +291,7 @@
             </div>
         </div>
 
+        <!-- ==================== CARDS TAB ==================== -->
         <div id="content-cards" class="tab-content hidden grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 h-fit">
                 <h2 class="text-lg font-semibold text-slate-800 mb-4"><i class="fa-solid fa-square-plus text-emerald-600 mr-1"></i> Swipe Credit Card Entry</h2>
@@ -270,12 +314,19 @@
                         </div>
                         <input type="number" id="cc-amount" placeholder="Amount (₹)" required class="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-emerald-600">
                     </div>
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-400 uppercase mb-1">Transaction Date</label>
-                        <input type="date" id="cc-date" required class="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-emerald-600">
+                    <!-- Feature 2: auto date for CC, shown as readonly display -->
+                    <div class="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-xs text-slate-500">
+                        <i class="fa-solid fa-calendar-day text-emerald-500"></i>
+                        <span>Date: <strong id="cc-auto-date" class="text-slate-700"></strong></span>
                     </div>
                     <button type="submit" class="w-full py-2.5 bg-emerald-600 text-white font-semibold text-sm rounded-xl hover:bg-emerald-700">Save CC Spend</button>
                 </form>
+
+                <!-- Feature 7: CC Bill Calendar -->
+                <div class="mt-5 bg-indigo-50 border border-indigo-100 rounded-2xl p-4">
+                    <h3 class="text-xs font-bold text-indigo-700 uppercase mb-3 flex items-center gap-1.5"><i class="fa-solid fa-calendar-alt"></i> Bill Cycle Tracker</h3>
+                    <div id="cc-cycle-tracker" class="space-y-2"></div>
+                </div>
             </div>
             
             <div class="lg:col-span-2 bg-white rounded-2xl p-5 shadow-sm border border-slate-100">
@@ -308,182 +359,189 @@
             </div>
         </div>
 
+        <!-- ==================== GOALS TAB (Feature 10) ==================== -->
+        <div id="content-goals" class="tab-content hidden space-y-6">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 h-fit">
+                    <h2 class="text-lg font-semibold text-slate-800 mb-4"><i class="fa-solid fa-plus text-emerald-600 mr-1"></i> Add Savings Goal</h2>
+                    <form id="form-goal" class="space-y-4">
+                        <div>
+                            <input type="text" id="goal-name" placeholder="Goal Name (e.g., New Phone, Trip to Goa)" required class="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-emerald-600">
+                        </div>
+                        <div>
+                            <input type="number" id="goal-target" placeholder="Target Amount (₹)" required class="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-emerald-600">
+                        </div>
+                        <div>
+                            <input type="number" id="goal-saved" placeholder="Already Saved (₹)" class="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-emerald-600">
+                        </div>
+                        <div>
+                            <select id="goal-icon" class="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-emerald-600">
+                                <option value="🎯">🎯 General Goal</option>
+                                <option value="✈️">✈️ Travel / Trip</option>
+                                <option value="📱">📱 Gadget</option>
+                                <option value="🏠">🏠 Home / Rent</option>
+                                <option value="🎓">🎓 Education</option>
+                                <option value="🚗">🚗 Vehicle</option>
+                                <option value="💍">💍 Special Occasion</option>
+                                <option value="🏥">🏥 Medical</option>
+                                <option value="💰">💰 Emergency Fund</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="w-full py-2.5 bg-emerald-600 text-white font-semibold text-sm rounded-xl hover:bg-emerald-700">Add Goal</button>
+                    </form>
+                </div>
+                <div class="lg:col-span-2 space-y-4">
+                    <!-- Goal summary bar -->
+                    <div class="bg-gradient-to-r from-emerald-600 to-teal-600 rounded-2xl p-5 text-white shadow-md">
+                        <p class="text-xs font-semibold text-emerald-100 uppercase tracking-wider mb-1">Total Savings Progress</p>
+                        <div class="flex justify-between items-end mt-1">
+                            <div>
+                                <h3 id="goal-total-saved" class="text-3xl font-black">₹0</h3>
+                                <p class="text-xs text-emerald-200 mt-0.5">saved across <span id="goal-count">0</span> goals</p>
+                            </div>
+                            <div class="text-right">
+                                <h3 id="goal-total-target" class="text-xl font-bold text-emerald-200">₹0</h3>
+                                <p class="text-xs text-emerald-300">total target</p>
+                            </div>
+                        </div>
+                        <div class="w-full bg-emerald-800/40 rounded-full h-2 mt-3">
+                            <div id="goal-overall-bar" class="bg-white h-2 rounded-full transition-all duration-700" style="width:0%"></div>
+                        </div>
+                        <p id="goal-overall-pct" class="text-xs text-emerald-200 mt-1 text-right">0% overall</p>
+                    </div>
+                    <div id="goal-list" class="space-y-3"></div>
+                </div>
+            </div>
+        </div>
+
     </main>
 
     <div id="statement-image-template" class="absolute left-[-9999px] top-[-9999px] w-[1000px] bg-slate-950 p-10 rounded-3xl"></div>
 
     <script>
         // ============================================================
-        // 🔥 FIREBASE-POWERED DATA LAYER
-        // Data is now synced in real-time across ALL devices/phones
+        // GLOBAL DATA STORES
         // ============================================================
-
-        // Global Datastores
         let txs = [];
         let friends = [];
         let emis = [];
         let cards = [];
+        let goals = [];
+        let budgets = { 'Chaya & Snacks': 500, 'Food & Dining': 2000, 'Entertainment': 1000, 'Travel': 1500, 'Groceries': 3000, 'EMI Payments': 0, 'Others': 1000 };
         let dismissedAlertKeys = [];
-        let _isSyncing = false; // prevent echo-loop when we receive our own writes
+        let _isSyncing = false;
+        let txFilter = 'all';
+        let expenseChart = null;
+        let monthlyBarChart = null;
+        let cardMeta = { fed_gen: 15, fed_due: 5, fed_limit: 100000, fedrupay_gen: 20, fedrupay_due: 10, fedrupay_limit: 100000 };
 
-        // ── Single Firebase Status Badge ────────────────────────────
-        // States: loading → live   (or error)
+        const fRup = (num) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(num);
+        const todayStr = () => new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+        const todayISO = () => new Date().toISOString().split('T')[0];
+
+        // ============================================================
+        // FIREBASE STATUS
+        // ============================================================
         function setFbStatus(state) {
             const badge = document.getElementById('fb-badge');
-            const dot   = document.getElementById('fb-dot');
-            const text  = document.getElementById('fb-text');
+            const dot = document.getElementById('fb-dot');
+            const text = document.getElementById('fb-text');
             if (!badge || !dot || !text) return;
-
             const cfg = {
                 loading: { badge: 'flex items-center gap-1.5 bg-amber-500/20 border border-amber-400/40 text-amber-300 px-2.5 py-1 rounded-full text-[10px] font-bold', dot: 'w-2 h-2 rounded-full bg-amber-400 animate-pulse inline-block', label: 'Loading...' },
                 live:    { badge: 'flex items-center gap-1.5 bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 px-2.5 py-1 rounded-full text-[10px] font-bold', dot: 'w-2 h-2 rounded-full bg-emerald-400 inline-block', label: '● Live' },
                 error:   { badge: 'flex items-center gap-1.5 bg-rose-500/20 border border-rose-400/40 text-rose-300 px-2.5 py-1 rounded-full text-[10px] font-bold', dot: 'w-2 h-2 rounded-full bg-rose-400 animate-pulse inline-block', label: 'Offline' }
             };
             const c = cfg[state] || cfg.loading;
-            badge.className = c.badge;
-            dot.className   = c.dot;
-            text.textContent = c.label;
+            badge.className = c.badge; dot.className = c.dot; text.textContent = c.label;
         }
+        function setConnectionStatus(s) { if(s==='connected') setFbStatus('live'); else if(s==='error') setFbStatus('error'); else setFbStatus('loading'); }
+        function setSyncStatus(s) {}
+        function showSyncStatus(m,c) {}
 
-        // Aliases used elsewhere
-        function setConnectionStatus(state) { if (state === 'connected') setFbStatus('live'); else if (state === 'error') setFbStatus('error'); else setFbStatus('loading'); }
-        function setSyncStatus(state) { /* no-op — single badge handles it */ }
-        function showSyncStatus(msg, color) { /* no-op */ }
-
-        // --- SAVE ALL DATA TO FIRESTORE ---
+        // ============================================================
+        // FIREBASE SAVE
+        // ============================================================
         async function saveToFirestore() {
             if (!window._firebaseReady || !window._dataDoc) return;
             _isSyncing = true;
-            showSyncStatus('Saving...', 'amber');
             try {
-                const currentTimestamp = Date.now();
-                const maxRetentionPeriodMs = 31 * 24 * 60 * 60 * 1000;
-
-                // Also auto-purge expired entries on save (31-day retention)
-                const cleanTxs = txs.filter(i => (currentTimestamp - i.id) < maxRetentionPeriodMs);
-                const cleanFriends = friends.filter(i => (currentTimestamp - i.id) < maxRetentionPeriodMs);
-                const cleanEmis = emis; // EMIs don't expire
-                const cleanCards = cards.filter(i => (currentTimestamp - i.id) < maxRetentionPeriodMs);
-
+                const now = Date.now();
+                const keep = 31 * 24 * 60 * 60 * 1000;
                 await window._setDoc(window._dataDoc, {
-                    txs: cleanTxs,
-                    friends: cleanFriends,
-                    emis: cleanEmis,
-                    cards: cleanCards,
+                    txs: txs.filter(i => (now - i.id) < keep),
+                    friends: friends.filter(i => (now - i.id) < keep),
+                    emis: emis,
+                    cards: cards.filter(i => (now - i.id) < keep),
+                    goals: goals,
+                    budgets: budgets,
                     cardMeta: cardMeta,
                     theme: localStorage.getItem('theme') || 'light',
-                    lastUpdated: currentTimestamp
+                    lastUpdated: now
                 });
-                showSyncStatus('Synced ✓', 'emerald');
             } catch (err) {
                 console.error('Firestore save error:', err);
-                showSyncStatus('Sync Error!', 'rose');
-                // Fallback to localStorage if Firebase fails
                 localStorage.setItem('mx_txs', JSON.stringify(txs));
                 localStorage.setItem('mx_friends', JSON.stringify(friends));
                 localStorage.setItem('mx_emis', JSON.stringify(emis));
                 localStorage.setItem('mx_cards', JSON.stringify(cards));
+                localStorage.setItem('mx_goals', JSON.stringify(goals));
+                localStorage.setItem('mx_budgets', JSON.stringify(budgets));
             }
             setTimeout(() => { _isSyncing = false; }, 1000);
         }
 
-        // --- LISTEN FOR REAL-TIME CHANGES FROM OTHER DEVICES ---
         function startFirestoreListener() {
             setConnectionStatus('connecting');
-            setSyncStatus('idle');
-
             window._onSnapshot(window._dataDoc, (snap) => {
-                // ✅ Step 1: Mark Firebase as connected
                 setConnectionStatus('connected');
-
-                if (_isSyncing) return; // skip echo of our own writes
-
-                // ✅ Step 2: Show sync in progress
-                setSyncStatus('saving');
-
+                if (_isSyncing) return;
                 if (snap.exists()) {
                     const data = snap.data();
-                    txs     = data.txs     || [];
+                    txs = data.txs || [];
                     friends = data.friends || [];
-                    emis    = data.emis    || [];
-                    cards   = data.cards   || [];
-                    if (data.cardMeta) {
-                        cardMeta = data.cardMeta;
-                        loadCardMetaInputs();
-                    }
+                    emis = data.emis || [];
+                    cards = data.cards || [];
+                    goals = data.goals || [];
+                    if (data.budgets) budgets = data.budgets;
+                    if (data.cardMeta) { cardMeta = data.cardMeta; loadCardMetaInputs(); }
                     renderAll();
-                } else {
-                    renderAll();
-                }
-
-                // ✅ Step 3: Confirm sync complete
-                setSyncStatus('synced');
-
+                } else { renderAll(); }
             }, (err) => {
                 console.error('Firestore listener error:', err);
-                // ❌ Connection failed
                 setConnectionStatus('error');
-                setSyncStatus('error');
-                // Fallback to localStorage
-                txs     = JSON.parse(localStorage.getItem('mx_txs'))     || [];
+                txs = JSON.parse(localStorage.getItem('mx_txs')) || [];
                 friends = JSON.parse(localStorage.getItem('mx_friends')) || [];
-                emis    = JSON.parse(localStorage.getItem('mx_emis'))    || [];
-                cards   = JSON.parse(localStorage.getItem('mx_cards'))   || [];
+                emis = JSON.parse(localStorage.getItem('mx_emis')) || [];
+                cards = JSON.parse(localStorage.getItem('mx_cards')) || [];
+                goals = JSON.parse(localStorage.getItem('mx_goals')) || [];
+                if (localStorage.getItem('mx_budgets')) budgets = JSON.parse(localStorage.getItem('mx_budgets'));
                 renderAll();
             });
         }
 
         function clearAllDataWithConfirmation() {
-            const userConfirmed = confirm("Are you absolutely sure you want to clear all transactions, friends balance logs, EMIs, and credit logs? This cannot be undone.");
-            if (userConfirmed) {
-                txs = []; friends = []; emis = []; cards = [];
+            if (confirm("Are you absolutely sure you want to clear all data? This cannot be undone.")) {
+                txs = []; friends = []; emis = []; cards = []; goals = [];
                 dismissedAlertKeys = [];
-                saveToFirestore();
-                renderAll();
+                saveToFirestore(); renderAll();
                 alert("Workspace reset completed successfully.");
             }
         }
 
-        let cardMeta = { fed_gen: 15, fed_due: 5, fed_limit: 100000, fedrupay_gen: 20, fedrupay_due: 10, fedrupay_limit: 100000 };
-        let expenseChart = null;
-
-        const fRup = (num) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(num);
-
+        // ============================================================
+        // UI HELPERS
+        // ============================================================
         function toggleDarkMode() {
             const isDark = document.documentElement.classList.toggle('dark');
             localStorage.setItem('theme', isDark ? 'dark' : 'light');
             document.getElementById('theme-icon').className = isDark ? "fa-solid fa-sun" : "fa-solid fa-moon";
-            updateChart();
-            saveToFirestore(); // sync theme across devices
+            updateCharts(); saveToFirestore();
         }
 
         function quickAmt(fieldId, val) {
             const input = document.getElementById(fieldId);
-            const curr = parseFloat(input.value) || 0;
-            input.value = curr + val;
-        }
-
-        function saveCardMeta() {
-            cardMeta.fed_gen = parseInt(document.getElementById('cc-gen-fed').value) || 15;
-            cardMeta.fed_due = parseInt(document.getElementById('cc-due-fed').value) || 5;
-            cardMeta.fed_limit = parseFloat(document.getElementById('cc-limit-fed').value) || 100000;
-            
-            cardMeta.fedrupay_gen = parseInt(document.getElementById('cc-gen-fedrupay').value) || 20;
-            cardMeta.fedrupay_due = parseInt(document.getElementById('cc-due-fedrupay').value) || 10;
-            cardMeta.fedrupay_limit = parseFloat(document.getElementById('cc-limit-fedrupay').value) || 100000;
-            
-            saveToFirestore(); // replaces: localStorage.setItem('mx_card_meta', ...)
-            updateAll();
-        }
-
-        function loadCardMetaInputs() {
-            document.getElementById('cc-gen-fed').value = cardMeta.fed_gen;
-            document.getElementById('cc-due-fed').value = cardMeta.fed_due;
-            document.getElementById('cc-limit-fed').value = cardMeta.fed_limit || 100000;
-            
-            document.getElementById('cc-gen-fedrupay').value = cardMeta.fedrupay_gen;
-            document.getElementById('cc-due-fedrupay').value = cardMeta.fedrupay_due;
-            document.getElementById('cc-limit-fedrupay').value = cardMeta.fedrupay_limit || 100000;
+            input.value = (parseFloat(input.value) || 0) + val;
         }
 
         function switchTab(tabId) {
@@ -493,9 +551,9 @@
                 el.classList.remove('border-emerald-600', 'text-emerald-600');
                 el.classList.add('border-transparent', 'text-slate-500');
             });
-            const activeTab = document.getElementById(`tab-${tabId}`);
-            activeTab.classList.remove('border-transparent', 'text-slate-500');
-            activeTab.classList.add('border-emerald-600', 'text-emerald-600');
+            const a = document.getElementById(`tab-${tabId}`);
+            a.classList.remove('border-transparent', 'text-slate-500');
+            a.classList.add('border-emerald-600', 'text-emerald-600');
         }
 
         function toggleTxStyle() {
@@ -503,6 +561,7 @@
             document.getElementById('tx-income-lbl').className = inc ? "cursor-pointer border-2 border-teal-500 bg-teal-50/50 text-teal-700 rounded-xl p-2.5 flex items-center justify-center font-medium text-sm transition-all" : "cursor-pointer border border-slate-200 text-slate-600 rounded-xl p-2.5 flex items-center justify-center font-medium text-sm transition-all";
             document.getElementById('tx-expense-lbl').className = !inc ? "cursor-pointer border-2 border-rose-500 bg-rose-50/50 text-rose-700 rounded-xl p-2.5 flex items-center justify-center font-medium text-sm transition-all" : "cursor-pointer border border-slate-200 text-slate-600 rounded-xl p-2.5 flex items-center justify-center font-medium text-sm transition-all";
         }
+
         function toggleFrStyle() {
             const bor = document.querySelector('input[name="frType"]:checked').value === 'borrowed';
             document.getElementById('fr-borrow-lbl').className = bor ? "cursor-pointer border-2 border-rose-500 bg-rose-50/50 text-rose-700 rounded-xl p-2.5 flex items-center justify-center font-medium text-xs transition-all" : "cursor-pointer border border-slate-200 text-slate-600 rounded-xl p-2.5 flex items-center justify-center font-medium text-xs transition-all";
@@ -514,36 +573,39 @@
             return txs.some(t => t.emiRefId === emiId && t.paidMonth === now.getMonth() && t.paidYear === now.getFullYear());
         }
 
-        function dismissWarningElement(uniqueKey) {
-            dismissedAlertKeys.push(uniqueKey);
+        function dismissWarningElement(key) {
+            dismissedAlertKeys.push(key);
             checkGlobalAlerts();
         }
 
-        // Separate render-only function (called by Firestore listener)
+        // ============================================================
+        // FEATURE 5: FILTER / SORT
+        // ============================================================
+        function setTxFilter(type) {
+            txFilter = type;
+            document.querySelectorAll('.filter-btn').forEach(b => {
+                b.className = 'filter-btn text-[10px] px-3 py-1 rounded-full font-bold bg-slate-100 text-slate-600 border border-slate-200 hover:bg-slate-50';
+            });
+            const activeEl = document.getElementById('filter-' + type);
+            if (activeEl) activeEl.className = 'filter-btn text-[10px] px-3 py-1 rounded-full font-bold bg-emerald-600 text-white border border-emerald-600';
+            renderTxList();
+        }
+
+        // ============================================================
+        // RENDER ALL
+        // ============================================================
         function renderAll() {
+            const now = new Date();
             let inc = txs.filter(t => t.type === 'income').reduce((s,t) => s + t.amount, 0);
             let exp = txs.filter(t => t.type === 'expense').reduce((s,t) => s + t.amount, 0);
-            
-            let remainingEmiDues = 0;
-            let totalOverhead = 0;
-            emis.forEach(e => {
-                totalOverhead += e.amount;
-                if (!isEmiPaidThisMonth(e.id)) {
-                    remainingEmiDues += e.amount;
-                }
-            });
+            let remainingEmiDues = 0, totalOverhead = 0;
+            emis.forEach(e => { totalOverhead += e.amount; if (!isEmiPaidThisMonth(e.id)) remainingEmiDues += e.amount; });
+            let safeToSpend = (inc - exp) - remainingEmiDues;
 
-            let liquidWalletPool = inc - exp;
-            let safeToSpendVal = liquidWalletPool - remainingEmiDues;
-            
             const mainBalEl = document.getElementById('dash-balance');
-            mainBalEl.innerText = fRup(safeToSpendVal);
+            mainBalEl.innerText = fRup(safeToSpend);
             document.getElementById('dash-balance-sub').innerText = `Locked for EMIs: ${fRup(remainingEmiDues)}`;
-            if(safeToSpendVal < 0) {
-                mainBalEl.className = "text-xl font-black text-rose-600 mt-1";
-            } else {
-                mainBalEl.className = "text-xl font-black text-slate-900 mt-1";
-            }
+            mainBalEl.className = safeToSpend < 0 ? "text-xl font-black text-rose-600 mt-1" : "text-xl font-black text-slate-900 mt-1";
 
             let grandFrNet = 0;
             friends.forEach(f => grandFrNet += (f.type === 'lent' ? f.amount : -f.amount));
@@ -552,20 +614,15 @@
             document.getElementById('dash-friends-sub').innerText = grandFrNet > 0 ? "Net you will receive" : grandFrNet < 0 ? "Net total you owe" : "All settled up";
             frEl.className = grandFrNet > 0 ? "text-xl font-bold text-teal-600 mt-1" : grandFrNet < 0 ? "text-xl font-bold text-rose-600 mt-1" : "text-xl font-bold text-slate-900 mt-1";
 
-            const now = new Date();
-            const curMonth = now.getMonth();
-            const curYear = now.getFullYear();
-
-            let lastMonth = curMonth - 1; let lastYear = curYear;
+            const curMonth = now.getMonth(), curYear = now.getFullYear();
+            let lastMonth = curMonth - 1, lastYear = curYear;
             if (lastMonth < 0) { lastMonth = 11; lastYear--; }
-
-            let currentMonthSum = 0; let lastMonthSum = 0;
+            let currentMonthSum = 0, lastMonthSum = 0;
             cards.forEach(c => {
-                const cDate = new Date(c.date);
-                if (cDate.getFullYear() === curYear && cDate.getMonth() === curMonth) { currentMonthSum += c.amount; } 
-                else if (cDate.getFullYear() === lastYear && cDate.getMonth() === lastMonth) { lastMonthSum += c.amount; }
+                const d = new Date(c.date);
+                if (d.getFullYear() === curYear && d.getMonth() === curMonth) currentMonthSum += c.amount;
+                else if (d.getFullYear() === lastYear && d.getMonth() === lastMonth) lastMonthSum += c.amount;
             });
-
             document.getElementById('dash-cc-current').innerText = fRup(currentMonthSum);
             document.getElementById('dash-cc-last').innerText = `Last Month: ${fRup(lastMonthSum)}`;
             document.getElementById('dash-emis').innerText = fRup(remainingEmiDues);
@@ -576,310 +633,368 @@
             renderFriendList();
             renderEmiList();
             renderCcList();
-            updateChart();
+            renderBudgetList();
+            renderGoalList();
+            renderCcCycleTracker();
+            updateCharts();
         }
 
-        function updateAll() {
-            renderAll();
-            saveToFirestore(); // save to cloud, broadcast to all devices
-        }
+        function updateAll() { renderAll(); saveToFirestore(); }
 
+        // ============================================================
+        // ALERTS
+        // ============================================================
         function checkGlobalAlerts() {
             const container = document.getElementById('alerts-container');
             container.innerHTML = '';
-            let liveVisibleAlertCount = 0;
+            let count = 0;
             const now = new Date();
             const todayDay = now.getDate();
 
+            // EMI countdown alerts (Feature 3)
             emis.forEach(e => {
                 if (isEmiPaidThisMonth(e.id)) return;
                 const targetDay = parseInt(e.day);
-                let diffDays = targetDay - todayDay;
-                if (diffDays >= 0 && diffDays <= 2) {
-                    const alertKey = `emi_${e.id}`;
-                    if (dismissedAlertKeys.includes(alertKey)) return;
-
-                    liveVisibleAlertCount++;
-                    const alertDiv = document.createElement('div');
-                    alertDiv.className = "bg-amber-50 dark:bg-amber-950/40 border-l-4 border-amber-500 text-amber-900 dark:text-amber-200 p-3 rounded-r-xl flex items-center justify-between text-xs font-semibold shadow-sm";
-                    alertDiv.innerHTML = `
+                let diff = targetDay - todayDay;
+                if (diff >= 0 && diff <= 5) {
+                    const key = `emi_${e.id}`;
+                    if (dismissedAlertKeys.includes(key)) return;
+                    count++;
+                    const div = document.createElement('div');
+                    div.className = "bg-amber-50 border-l-4 border-amber-500 text-amber-900 p-3 rounded-r-xl flex items-center justify-between text-xs font-semibold shadow-sm";
+                    const urgency = diff === 0 ? '🔴 TODAY' : diff === 1 ? '🟠 Tomorrow' : `🟡 in ${diff} days`;
+                    div.innerHTML = `
                         <div class="flex items-center gap-2">
                             <i class="fa-solid fa-bell text-amber-600 text-sm animate-pulse"></i>
-                            <span><strong>EMI Due:</strong> ${e.name} (${fRup(e.amount)}) is due ${diffDays === 0 ? 'Today' : 'in ' + diffDays + ' days'}</span>
+                            <span><strong>EMI Due ${urgency}:</strong> ${e.name} — ${fRup(e.amount)} due Day ${e.day}</span>
                         </div>
                         <div class="flex items-center gap-3">
                             <button onclick="payEmiDirectly(${e.id})" class="bg-amber-600 text-white px-2.5 py-1 rounded-md text-[11px] font-bold shadow-sm hover:bg-amber-700">Mark Paid</button>
-                            <button onclick="dismissWarningElement('${alertKey}')" title="Dismiss Alert" class="text-amber-400 hover:text-amber-700 text-sm px-1 font-black">&times;</button>
-                        </div>
-                    `;
-                    container.appendChild(alertDiv);
+                            <button onclick="dismissWarningElement('${key}')" class="text-amber-400 hover:text-amber-700 text-sm px-1 font-black">&times;</button>
+                        </div>`;
+                    container.appendChild(div);
                 }
             });
 
+            // CC due alerts
             const cardsGroup = { 'Federal Credit Card': 0, 'Federal RuPay Credit Card': 0 };
             cards.forEach(c => {
-                const cDate = new Date(c.date);
-                if(cDate.getMonth() === now.getMonth() && cDate.getFullYear() === now.getFullYear()) {
-                    if(cardsGroup[c.name] !== undefined) cardsGroup[c.name] += c.amount;
+                const d = new Date(c.date);
+                if (d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()) {
+                    if (cardsGroup[c.name] !== undefined) cardsGroup[c.name] += c.amount;
                 }
             });
-
             const cardConfigs = [
                 { id: 'fed', name: 'Federal Credit Card', due: cardMeta.fed_due, limit: cardMeta.fed_limit || 100000 },
                 { id: 'rup', name: 'Federal RuPay Credit Card', due: cardMeta.fedrupay_due, limit: cardMeta.fedrupay_limit || 100000 }
             ];
-
-            cardConfigs.forEach(config => {
-                let diff = config.due - todayDay;
+            cardConfigs.forEach(cfg => {
+                let diff = cfg.due - todayDay;
                 if (diff >= 0 && diff <= 3) {
-                    const alertKey = `card_due_${config.id}`;
-                    if (!dismissedAlertKeys.includes(alertKey)) {
-                        liveVisibleAlertCount++;
-                        const alertDiv = document.createElement('div');
-                        alertDiv.className = "bg-indigo-50 dark:bg-indigo-950/40 border-l-4 border-indigo-500 text-indigo-900 dark:text-indigo-200 p-3 rounded-r-xl flex items-center justify-between text-xs font-semibold shadow-sm";
-                        alertDiv.innerHTML = `
-                            <div class="flex items-center gap-2">
-                                <i class="fa-solid fa-credit-card text-indigo-600 text-sm"></i>
-                                <span><strong>Card Due Soon:</strong> ${config.name} cycle deadline is in ${diff} days (Day ${config.due}).</span>
-                            </div>
-                            <button onclick="dismissWarningElement('${alertKey}')" title="Dismiss Alert" class="text-indigo-400 hover:text-indigo-700 text-sm px-1 font-black">&times;</button>
-                        `;
-                        container.appendChild(alertDiv);
+                    const key = `card_due_${cfg.id}`;
+                    if (!dismissedAlertKeys.includes(key)) {
+                        count++;
+                        const div = document.createElement('div');
+                        div.className = "bg-indigo-50 border-l-4 border-indigo-500 text-indigo-900 p-3 rounded-r-xl flex items-center justify-between text-xs font-semibold shadow-sm";
+                        div.innerHTML = `<div class="flex items-center gap-2"><i class="fa-solid fa-credit-card text-indigo-600 text-sm"></i><span><strong>Card Due Soon:</strong> ${cfg.name} payment due in ${diff} day(s) (Day ${cfg.due}).</span></div><button onclick="dismissWarningElement('${key}')" class="text-indigo-400 hover:text-indigo-700 text-sm px-1 font-black">&times;</button>`;
+                        container.appendChild(div);
                     }
                 }
-
-                let currentSpend = cardsGroup[config.name] || 0;
-                let utilRatio = (currentSpend / config.limit) * 100;
-                if(utilRatio > 30) {
-                    const alertKey = `card_util_${config.id}`;
-                    if (!dismissedAlertKeys.includes(alertKey)) {
-                        liveVisibleAlertCount++;
-                        const alertDiv = document.createElement('div');
-                        alertDiv.className = "bg-rose-50 dark:bg-rose-950/30 border-l-4 border-rose-500 text-rose-900 dark:text-rose-200 p-3 rounded-r-xl flex items-center justify-between text-xs font-semibold shadow-sm";
-                        alertDiv.innerHTML = `
-                            <div class="flex items-center gap-2 pr-4">
-                                <i class="fa-solid fa-triangle-exclamation text-rose-600"></i>
-                                <span><strong>High Utilization Warning:</strong> ${config.name} is at <span class="text-rose-600 dark:text-rose-400 font-black">${utilRatio.toFixed(1)}%</span> pool usage (${fRup(currentSpend)} / ${fRup(config.limit)}). Ideal cap is below 30%.</span>
-                            </div>
-                            <button onclick="dismissWarningElement('${alertKey}')" title="Dismiss Alert" class="text-rose-400 hover:text-rose-700 text-sm px-1 font-black">&times;</button>
-                        `;
-                        container.appendChild(alertDiv);
+                let utilRatio = ((cardsGroup[cfg.name] || 0) / cfg.limit) * 100;
+                if (utilRatio > 30) {
+                    const key = `card_util_${cfg.id}`;
+                    if (!dismissedAlertKeys.includes(key)) {
+                        count++;
+                        const div = document.createElement('div');
+                        div.className = "bg-rose-50 border-l-4 border-rose-500 text-rose-900 p-3 rounded-r-xl flex items-center justify-between text-xs font-semibold shadow-sm";
+                        div.innerHTML = `<div class="flex items-center gap-2 pr-4"><i class="fa-solid fa-triangle-exclamation text-rose-600"></i><span><strong>High Utilization:</strong> ${cfg.name} at ${utilRatio.toFixed(1)}% (${fRup(cardsGroup[cfg.name])} / ${fRup(cfg.limit)}). Keep below 30%.</span></div><button onclick="dismissWarningElement('${key}')" class="text-rose-400 hover:text-rose-700 text-sm px-1 font-black">&times;</button>`;
+                        container.appendChild(div);
                     }
                 }
             });
 
-            container.className = liveVisibleAlertCount > 0 ? "space-y-2" : "hidden";
+            // Budget overspend alerts (Feature 1)
+            const now2 = new Date();
+            const cats = Object.keys(budgets);
+            cats.forEach(cat => {
+                const limit = budgets[cat];
+                if (!limit || limit === 0) return;
+                const spent = txs.filter(t => t.type === 'expense' && t.cat === cat && (() => { const d = new Date(t.date || t.id); return d.getMonth() === now2.getMonth() && d.getFullYear() === now2.getFullYear(); })()).reduce((s,t) => s + t.amount, 0);
+                const pct = (spent / limit) * 100;
+                if (pct >= 80) {
+                    const key = `budget_${cat}`;
+                    if (!dismissedAlertKeys.includes(key)) {
+                        count++;
+                        const div = document.createElement('div');
+                        const color = pct >= 100 ? 'rose' : 'orange';
+                        div.className = `bg-${color}-50 border-l-4 border-${color}-500 text-${color}-900 p-3 rounded-r-xl flex items-center justify-between text-xs font-semibold shadow-sm`;
+                        div.innerHTML = `<div class="flex items-center gap-2"><i class="fa-solid fa-chart-line text-${color}-600"></i><span><strong>Budget ${pct >= 100 ? 'Exceeded' : 'Warning'}:</strong> ${cat} — ${fRup(spent)} of ${fRup(limit)} (${pct.toFixed(0)}%)</span></div><button onclick="dismissWarningElement('${key}')" class="text-${color}-400 hover:text-${color}-700 text-sm px-1 font-black">&times;</button>`;
+                        container.appendChild(div);
+                    }
+                }
+            });
+
+            container.className = count > 0 ? "space-y-2" : "hidden";
         }
 
-        function settleFriendDirectly(name, netAmount) {
-            if(netAmount === 0) return;
-            const absoluteAmount = Math.abs(netAmount);
-            friends.push({ id: Date.now(), type: netAmount > 0 ? 'borrowed' : 'lent', name: name, amount: absoluteAmount, notes: `Auto Settlement Balance Cleared` });
-            txs.push({ id: Date.now() + 1, type: netAmount > 0 ? 'income' : 'expense', desc: `Settled peer: ${name}`, amount: absoluteAmount, cat: 'Others' });
-            updateAll();
+        // ============================================================
+        // FEATURE 1: BUDGET LIST RENDER & EDIT
+        // ============================================================
+        let budgetEditMode = false;
+        function toggleBudgetEdit() {
+            budgetEditMode = !budgetEditMode;
+            document.getElementById('budget-edit-btn').innerHTML = budgetEditMode ? '<i class="fa-solid fa-check mr-1"></i>Save' : '<i class="fa-solid fa-pen-to-square mr-1"></i>Edit';
+            renderBudgetList();
+            if (!budgetEditMode) saveToFirestore();
         }
 
-        function payEmiDirectly(id) {
-            const targetEmi = emis.find(e => e.id === id);
-            if (targetEmi) {
-                const now = new Date();
-                txs.push({ id: Date.now(), type: 'expense', desc: `Paid EMI: ${targetEmi.name}`, amount: targetEmi.amount, cat: 'EMI Payments', emiRefId: targetEmi.id, paidMonth: now.getMonth(), paidYear: now.getFullYear() });
-                updateAll();
+        function renderBudgetList() {
+            const box = document.getElementById('budget-list');
+            box.innerHTML = '';
+            const now = new Date();
+            const cats = ['Chaya & Snacks', 'Food & Dining', 'Entertainment', 'Travel', 'Groceries', 'EMI Payments', 'Others'];
+            const icons = { 'Chaya & Snacks': '☕', 'Food & Dining': '🍲', 'Entertainment': '🎬', 'Travel': '🚗', 'Groceries': '🛒', 'EMI Payments': '📉', 'Others': '📦' };
+
+            cats.forEach(cat => {
+                const limit = budgets[cat] || 0;
+                const spent = txs.filter(t => {
+                    const d = new Date(t.date || t.id);
+                    return t.type === 'expense' && t.cat === cat && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+                }).reduce((s,t) => s + t.amount, 0);
+                const pct = limit > 0 ? Math.min((spent / limit) * 100, 100) : 0;
+                const barColor = pct >= 100 ? 'bg-rose-500' : pct >= 80 ? 'bg-orange-400' : 'bg-emerald-500';
+
+                const row = document.createElement('div');
+                row.className = "space-y-1";
+                row.innerHTML = `
+                    <div class="flex justify-between items-center text-xs">
+                        <span class="font-semibold text-slate-700">${icons[cat]} ${cat}</span>
+                        ${budgetEditMode
+                            ? `<input type="number" value="${limit}" onchange="budgets['${cat}']=parseInt(this.value)||0;renderBudgetList();" class="w-24 px-2 py-0.5 text-xs rounded-lg border border-emerald-300 bg-white text-slate-800 text-right focus:outline-none">`
+                            : `<span class="text-slate-500">${fRup(spent)} <span class="text-slate-300">/</span> ${limit > 0 ? fRup(limit) : '<span class="text-slate-400 italic">No limit</span>'}</span>`
+                        }
+                    </div>
+                    ${limit > 0 ? `<div class="w-full bg-slate-100 rounded-full h-1.5"><div class="budget-bar ${barColor} h-1.5 rounded-full" style="width:${pct}%"></div></div>` : ''}
+                `;
+                box.appendChild(row);
+            });
+        }
+
+        // ============================================================
+        // FEATURE 4 & CHARTS
+        // ============================================================
+        function updateCharts() {
+            updateDoughnutChart();
+            updateMonthlyBarChart();
+        }
+
+        function updateDoughnutChart() {
+            const categories = ['Chaya & Snacks', 'Food & Dining', 'Entertainment', 'Travel', 'Groceries', 'EMI Payments', 'Others'];
+            const totals = categories.map(cat => txs.filter(t => t.cat === cat && t.type === 'expense').reduce((s,t) => s + t.amount, 0));
+            const hasData = totals.some(v => v > 0);
+            const isDark = document.documentElement.classList.contains('dark');
+            const data = {
+                labels: hasData ? categories : ['No Data'],
+                datasets: [{ data: hasData ? totals : [1], backgroundColor: hasData ? ['#eab308','#f97316','#a855f7','#06b6d4','#22c55e','#ef4444','#94a3b8'] : (isDark ? ['#334155'] : ['#e2e8f0']), borderWidth: 0 }]
+            };
+            if (expenseChart) {
+                expenseChart.data = data;
+                expenseChart.options.plugins.legend.labels.color = isDark ? '#f1f5f9' : '#334155';
+                expenseChart.update();
+            } else {
+                expenseChart = new Chart(document.getElementById('expenseChart').getContext('2d'), {
+                    type: 'doughnut', data,
+                    options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 10 }, color: isDark ? '#f1f5f9' : '#334155' } } }, cutout: '76%' }
+                });
             }
         }
 
-        function generateImageStatement() {
+        function updateMonthlyBarChart() {
+            const isDark = document.documentElement.classList.contains('dark');
             const now = new Date();
-            const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-            const currentMonthName = months[now.getMonth()];
-            
-            let inc = txs.filter(t => t.type === 'income').reduce((s,t) => s + t.amount, 0);
-            let exp = txs.filter(t => t.type === 'expense').reduce((s,t) => s + t.amount, 0);
-            let grandFrNet = friends.reduce((s,f) => s + (f.type === 'lent' ? f.amount : -f.amount), 0);
-            let totalCcSum = cards.reduce((s,c)=>s+c.amount,0);
-            let totalEmiOverhead = emis.reduce((s,e)=>s+e.amount,0);
+            const labels = [];
+            const incomes = [];
+            const expenses = [];
+            const monthNames = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
-            const tpl = document.getElementById('statement-image-template');
-            
-            tpl.innerHTML = `
-                <div class="bg-slate-950 text-slate-100 font-sans p-8 rounded-3xl border border-slate-800 shadow-2xl">
-                    <div class="flex justify-between items-start border-b border-slate-800 pb-6 mb-6">
-                        <div>
-                            <div class="flex items-center gap-2">
-                                <div class="bg-emerald-500 text-slate-950 p-2 rounded-xl text-lg font-black shadow-lg"><i class="fa-solid fa-wallet"></i></div>
-                                <h1 class="text-2xl font-black text-white">My Wallet</h1>
-                            </div>
-                            <p class="text-[11px] text-slate-400 mt-1.5 uppercase font-semibold">Premium Multi-Tab Account Ledger Report</p>
-                        </div>
-                        <div class="text-right">
-                            <span class="bg-gradient-to-r from-emerald-500/20 to-teal-500/20 border border-emerald-500/40 text-emerald-300 font-bold px-4 py-1.5 rounded-xl text-xs">${currentMonthName} 2026</span>
-                            <p class="text-[10px] text-slate-500 mt-2">Issued: ${now.toLocaleDateString()}</p>
-                        </div>
-                    </div>
+            for (let i = 5; i >= 0; i--) {
+                let d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+                labels.push(monthNames[d.getMonth()] + " '" + String(d.getFullYear()).slice(2));
+                const m = d.getMonth(), y = d.getFullYear();
+                incomes.push(txs.filter(t => { const td = new Date(t.date || t.id); return t.type==='income' && td.getMonth()===m && td.getFullYear()===y; }).reduce((s,t)=>s+t.amount,0));
+                expenses.push(txs.filter(t => { const td = new Date(t.date || t.id); return t.type==='expense' && td.getMonth()===m && td.getFullYear()===y; }).reduce((s,t)=>s+t.amount,0));
+            }
 
-                    <div class="grid grid-cols-4 gap-4 mb-8">
-                        <div class="bg-slate-900 p-4 rounded-xl border border-slate-800 flex flex-col justify-between">
-                            <span class="text-[10px] text-slate-400 uppercase font-bold">Liquid Balance</span>
-                            <span class="text-xl font-black text-emerald-400 mt-2">${fRup(inc - exp)}</span>
-                        </div>
-                        <div class="bg-slate-900 p-4 rounded-xl border border-slate-800 flex flex-col justify-between">
-                            <span class="text-[10px] text-slate-400 uppercase font-bold">Peer Ledgers</span>
-                            <span class="text-xl font-black ${grandFrNet >= 0 ? 'text-teal-400' : 'text-rose-400'} mt-2">${fRup(Math.abs(grandFrNet))}</span>
-                        </div>
-                        <div class="bg-slate-900 p-4 rounded-xl border border-slate-800 flex flex-col justify-between">
-                            <span class="text-[10px] text-slate-400 uppercase font-bold">Active EMIs</span>
-                            <span class="text-xl font-black text-amber-400 mt-2">${fRup(totalEmiOverhead)}</span>
-                        </div>
-                        <div class="bg-slate-900 p-4 rounded-xl border border-slate-800 flex flex-col justify-between">
-                            <span class="text-[10px] text-slate-400 uppercase font-bold">Credit Spends</span>
-                            <span class="text-xl font-black text-indigo-400 mt-2">${fRup(totalCcSum)}</span>
-                        </div>
-                    </div>
+            const textColor = isDark ? '#cbd5e1' : '#64748b';
+            const gridColor = isDark ? '#1e293b' : '#f1f5f9';
 
-                    <div class="grid grid-cols-2 gap-6 items-start">
-                        <div class="space-y-6">
-                            <div class="bg-slate-900/50 p-4 rounded-2xl border border-slate-800">
-                                <h3 class="text-xs font-bold text-emerald-400 mb-3 uppercase flex items-center gap-1.5 border-b border-slate-800 pb-2">Tab 1: Cash & Bank Logs</h3>
-                                <div class="space-y-2">
-                                    ${txs.length === 0 ? '<p class="text-[10px] text-slate-500 py-2">No records captured.</p>' : 
-                                    txs.slice(0, 5).map(t => `
-                                        <div class="flex justify-between items-center bg-slate-950 px-3 py-2 rounded-xl text-xs border-l-4 ${t.type==='income'?'border-teal-500':'border-rose-500'}">
-                                            <div><p class="text-slate-100 font-bold">${t.desc}</p><span class="text-[9px] text-slate-400">${t.cat}</span></div>
-                                            <span class="font-bold text-sm ${t.type==='income'?'text-teal-400':'text-rose-400'}">${t.type==='income'?'+':'-'}${fRup(t.amount)}</span>
-                                        </div>
-                                    `).join('')}
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="space-y-6">
-                            <div class="bg-slate-900/50 p-4 rounded-2xl border border-slate-800">
-                                <h3 class="text-xs font-bold text-teal-400 mb-3 uppercase flex items-center gap-1.5 border-b border-slate-800 pb-2">Tab 2: Friends Ledger</h3>
-                                <div class="space-y-2">
-                                    ${friends.length === 0 ? '<p class="text-[10px] text-slate-500 py-2">No records logged.</p>' : 
-                                    friends.slice(0, 5).map(f => `
-                                        <div class="flex justify-between items-center bg-slate-950 px-3 py-2 rounded-xl text-xs border-l-4 ${f.type==='lent'?'border-teal-500':'border-rose-500'}">
-                                            <div><p class="text-slate-100 font-bold">${f.name}</p></div>
-                                            <span class="font-bold text-slate-200">${fRup(f.amount)}</span>
-                                        </div>
-                                    `).join('')}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            `;
-            
-            setTimeout(() => {
-                html2canvas(tpl, { scale: 2, backgroundColor: "#020617", logging: false, useCORS: true }).then(canvas => {
-                    const link = document.createElement("a");
-                    link.href = canvas.toDataURL("image/png");
-                    link.download = `Wallet_Statement_${currentMonthName}_2026.png`;
-                    link.click();
+            if (monthlyBarChart) {
+                monthlyBarChart.data.labels = labels;
+                monthlyBarChart.data.datasets[0].data = incomes;
+                monthlyBarChart.data.datasets[1].data = expenses;
+                monthlyBarChart.options.scales.x.ticks.color = textColor;
+                monthlyBarChart.options.scales.y.ticks.color = textColor;
+                monthlyBarChart.options.scales.y.grid.color = gridColor;
+                monthlyBarChart.update();
+            } else {
+                monthlyBarChart = new Chart(document.getElementById('monthlyBarChart').getContext('2d'), {
+                    type: 'bar',
+                    data: {
+                        labels,
+                        datasets: [
+                            { label: 'Income', data: incomes, backgroundColor: '#10b981', borderRadius: 6, barPercentage: 0.5 },
+                            { label: 'Expense', data: expenses, backgroundColor: '#f43f5e', borderRadius: 6, barPercentage: 0.5 }
+                        ]
+                    },
+                    options: {
+                        responsive: true, maintainAspectRatio: false,
+                        plugins: { legend: { position: 'top', labels: { boxWidth: 10, font: { size: 10 }, color: textColor } } },
+                        scales: {
+                            x: { ticks: { color: textColor, font: { size: 10 } }, grid: { display: false } },
+                            y: { ticks: { color: textColor, font: { size: 10 }, callback: v => '₹' + (v >= 1000 ? (v/1000).toFixed(0)+'k' : v) }, grid: { color: gridColor } }
+                        }
+                    }
                 });
-            }, 120);
+            }
         }
 
+        // ============================================================
+        // FEATURE 5: TX LIST WITH FILTER + SORT
+        // ============================================================
         function renderTxList() {
-            const box = document.getElementById('tx-list'); box.innerHTML = '';
-            const query = document.getElementById('tx-search').value.toLowerCase().trim();
-            let filtered = txs.filter(t => query === "" || t.desc.toLowerCase().includes(query) || t.cat.toLowerCase().includes(query));
+            const box = document.getElementById('tx-list');
+            box.innerHTML = '';
+            const query = (document.getElementById('tx-search').value || '').toLowerCase().trim();
+            const catFilter = document.getElementById('filter-cat').value;
+            const sortMode = document.getElementById('filter-sort').value;
 
-            if (!filtered.length) { box.innerHTML = '<p class="text-xs text-slate-400 py-4 text-center">No structural entries matching query.</p>'; return; }
-            [...filtered].reverse().slice(0, 15).forEach(t => {
+            let filtered = txs.filter(t => {
+                const matchQuery = query === "" || t.desc.toLowerCase().includes(query) || t.cat.toLowerCase().includes(query);
+                const matchType = txFilter === 'all' || t.type === txFilter;
+                const matchCat = catFilter === '' || t.cat === catFilter;
+                return matchQuery && matchType && matchCat;
+            });
+
+            if (sortMode === 'newest') filtered = [...filtered].sort((a,b) => b.id - a.id);
+            else if (sortMode === 'oldest') filtered = [...filtered].sort((a,b) => a.id - b.id);
+            else if (sortMode === 'highest') filtered = [...filtered].sort((a,b) => b.amount - a.amount);
+            else if (sortMode === 'lowest') filtered = [...filtered].sort((a,b) => a.amount - b.amount);
+
+            if (!filtered.length) { box.innerHTML = '<p class="text-xs text-slate-400 py-4 text-center">No entries matching query.</p>'; return; }
+
+            filtered.slice(0, 20).forEach(t => {
                 const item = document.createElement('div');
                 item.className = "flex justify-between items-center bg-slate-50 border border-slate-100 p-2.5 rounded-xl text-xs";
-                item.innerHTML = `<div><p class="font-bold text-slate-700">${t.desc}</p><span class="text-[10px] text-slate-400">${t.cat}</span></div>
-                <div class="flex items-center gap-2"><span class="font-bold ${t.type==='income'?'text-teal-600':'text-rose-600'}">${t.type==='income'?'+':'-'}${fRup(t.amount)}</span>
-                <button onclick="delItem('tx', ${t.id})" class="text-slate-300 hover:text-rose-600"><i class="fa-solid fa-trash-can"></i></button></div>`;
+                const dateStr = t.date ? new Date(t.date).toLocaleDateString('en-IN', {day:'2-digit',month:'short'}) : '';
+                item.innerHTML = `
+                    <div>
+                        <p class="font-bold text-slate-700">${t.desc}</p>
+                        <span class="text-[10px] text-slate-400">${t.cat}${dateStr ? ' · ' + dateStr : ''}</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="font-bold ${t.type==='income'?'text-teal-600':'text-rose-600'}">${t.type==='income'?'+':'-'}${fRup(t.amount)}</span>
+                        <button onclick="delItem('tx',${t.id})" class="text-slate-300 hover:text-rose-600"><i class="fa-solid fa-trash-can"></i></button>
+                    </div>`;
                 box.appendChild(item);
             });
         }
 
+        // ============================================================
+        // FRIENDS
+        // ============================================================
         function renderFriendList() {
             const box = document.getElementById('friend-list'); box.innerHTML = '';
             if (!friends.length) { box.innerHTML = '<p class="text-xs text-slate-400 py-4 text-center">No transaction records logged.</p>'; return; }
-
             let maps = {};
             friends.forEach(f => {
-                let nameKey = f.name.trim();
-                if (!maps[nameKey]) maps[nameKey] = { total: 0, items: [] };
-                maps[nameKey].items.push(f);
-                maps[nameKey].total += (f.type === 'lent' ? f.amount : -f.amount);
+                const k = f.name.trim();
+                if (!maps[k]) maps[k] = { total: 0, items: [] };
+                maps[k].items.push(f);
+                maps[k].total += (f.type === 'lent' ? f.amount : -f.amount);
             });
-
             for (let name in maps) {
-                const group = maps[name];
+                const g = maps[name];
                 const card = document.createElement('div');
                 card.className = "bg-slate-50/50 border border-slate-200 p-4 rounded-2xl space-y-3 shadow-sm";
-                let balanceColor = group.total > 0 ? 'text-teal-600' : group.total < 0 ? 'text-rose-600' : 'text-slate-500';
-                let balanceText = group.total > 0 ? `Lent (You get back ₹${Math.abs(group.total)})` : group.total < 0 ? `Borrowed (You owe ₹${Math.abs(group.total)})` : 'Fully Settled Up';
-
-                let itemRows = group.items.map(item => `
+                const balColor = g.total > 0 ? 'text-teal-600' : g.total < 0 ? 'text-rose-600' : 'text-slate-500';
+                const balText = g.total > 0 ? `Lent (You get back ₹${Math.abs(g.total).toFixed(0)})` : g.total < 0 ? `Borrowed (You owe ₹${Math.abs(g.total).toFixed(0)})` : 'Fully Settled Up';
+                const rows = g.items.map(item => `
                     <div class="flex justify-between items-center bg-white border border-slate-100 px-3 py-2 rounded-xl text-xs">
-                        <div><span class="font-medium text-slate-700">${item.notes || 'Fund Entry'}</span></div>
-                        <div class="flex items-center gap-2"><span class="font-bold ${item.type === 'lent' ? 'text-teal-600' : 'text-rose-600'}">${fRup(item.amount)}</span>
-                        <button onclick="delItem('friend', ${item.id})" class="text-slate-300 hover:text-rose-600"><i class="fa-solid fa-xmark"></i></button></div>
-                    </div>
-                `).join('');
-
+                        <div>
+                            <span class="font-medium text-slate-700">${item.notes || 'Fund Entry'}</span>
+                            ${item.date ? `<span class="text-[9px] text-slate-400 ml-1">· ${new Date(item.date).toLocaleDateString('en-IN',{day:'2-digit',month:'short'})}</span>` : ''}
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="font-bold ${item.type==='lent'?'text-teal-600':'text-rose-600'}">${fRup(item.amount)}</span>
+                            <button onclick="delItem('friend',${item.id})" class="text-slate-300 hover:text-rose-600"><i class="fa-solid fa-xmark"></i></button>
+                        </div>
+                    </div>`).join('');
                 card.innerHTML = `
                     <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center border-b border-slate-200 pb-2 gap-2">
-                        <div><h3 class="font-bold text-sm text-slate-800">${name}</h3><span class="text-xs font-bold ${balanceColor}">${balanceText}</span></div>
-                        ${group.total !== 0 ? `<button onclick="settleFriendDirectly('${name.replace(/'/g, "\\'")}', ${group.total})" class="bg-teal-600 hover:bg-teal-700 text-white font-bold text-[10px] px-2 py-1 rounded-lg flex items-center gap-1 shadow-sm"><i class="fa-solid fa-handshake"></i> Settle Up</button>`:''}
+                        <div><h3 class="font-bold text-sm text-slate-800">${name}</h3><span class="text-xs font-bold ${balColor}">${balText}</span></div>
+                        ${g.total !== 0 ? `<button onclick="settleFriendDirectly('${name.replace(/'/g,"\\'")}', ${g.total})" class="bg-teal-600 hover:bg-teal-700 text-white font-bold text-[10px] px-2 py-1 rounded-lg flex items-center gap-1 shadow-sm"><i class="fa-solid fa-handshake"></i> Settle Up</button>` : ''}
                     </div>
-                    <div class="space-y-1.5">${itemRows}</div>
-                `;
+                    <div class="space-y-1.5">${rows}</div>`;
                 box.appendChild(card);
             }
         }
 
+        // ============================================================
+        // EMI LIST (Feature 3: countdown badges)
+        // ============================================================
         function renderEmiList() {
             const box = document.getElementById('emi-list'); box.innerHTML = '';
             if (!emis.length) { box.innerHTML = '<p class="text-xs text-slate-400 py-4 text-center">No active configured entries.</p>'; return; }
+            const today = new Date().getDate();
             [...emis].sort((a,b)=>parseInt(a.day)-parseInt(b.day)).forEach(e => {
-                const item = document.createElement('div');
                 const paid = isEmiPaidThisMonth(e.id);
+                const diff = parseInt(e.day) - today;
+                let countdownBadge = '';
+                if (!paid) {
+                    if (diff < 0) countdownBadge = `<span class="px-2 py-0.5 text-[9px] font-bold rounded-full bg-rose-50 text-rose-700 border border-rose-200">Overdue</span>`;
+                    else if (diff === 0) countdownBadge = `<span class="px-2 py-0.5 text-[9px] font-bold rounded-full bg-red-100 text-red-700 border border-red-300 animate-pulse">Due Today!</span>`;
+                    else if (diff <= 3) countdownBadge = `<span class="px-2 py-0.5 text-[9px] font-bold rounded-full bg-orange-50 text-orange-700 border border-orange-200">Due in ${diff}d</span>`;
+                    else countdownBadge = `<span class="px-2 py-0.5 text-[9px] font-bold rounded-full bg-slate-100 text-slate-500 border border-slate-200">${diff} days left</span>`;
+                }
+                const item = document.createElement('div');
                 item.className = "flex justify-between items-center bg-white border border-slate-100 p-3 rounded-xl text-xs shadow-sm";
                 item.innerHTML = `
                     <div>
-                        <div class="flex items-center gap-2">
+                        <div class="flex items-center gap-2 flex-wrap">
                             <p class="font-bold text-slate-800 text-sm">${e.name}</p>
-                            <span class="px-2 py-0.5 text-[10px] font-bold rounded-full ${paid ? 'bg-teal-50 text-teal-700 border border-teal-200' : 'bg-amber-50 text-amber-700 border border-amber-200'}">
-                                ${paid ? '✓ Paid' : '⏳ Pending'}
-                            </span>
+                            <span class="px-2 py-0.5 text-[10px] font-bold rounded-full ${paid ? 'bg-teal-50 text-teal-700 border border-teal-200' : 'bg-amber-50 text-amber-700 border border-amber-200'}">${paid ? '✓ Paid' : '⏳ Pending'}</span>
+                            ${countdownBadge}
                         </div>
                         <p class="text-slate-500 text-[10px] mt-0.5">Day ${e.day} of month</p>
                     </div>
                     <div class="flex items-center gap-3">
                         <p class="font-bold text-slate-800 text-sm">${fRup(e.amount)}</p>
-                        ${!paid ? `<button onclick="payEmiDirectly(${e.id})" title="Mark as Paid" class="text-emerald-600 hover:text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg font-bold text-[10px] transition-colors">Pay</button>` : ''}
-                        <button onclick="delItem('emi', ${e.id})" class="text-slate-300 hover:text-rose-600"><i class="fa-solid fa-trash-can"></i></button>
-                    </div>
-                `;
+                        ${!paid ? `<button onclick="payEmiDirectly(${e.id})" class="text-emerald-600 hover:text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg font-bold text-[10px]">Pay</button>` : ''}
+                        <button onclick="delItem('emi',${e.id})" class="text-slate-300 hover:text-rose-600"><i class="fa-solid fa-trash-can"></i></button>
+                    </div>`;
                 box.appendChild(item);
             });
         }
 
+        // ============================================================
+        // CARDS LIST
+        // ============================================================
         function renderCcList() {
             const box = document.getElementById('cc-list'); box.innerHTML = '';
             if (!cards.length) { box.innerHTML = '<p class="text-xs text-slate-400 py-4 text-center">No statements captured.</p>'; return; }
-            
             const now = new Date();
             const cardsGroup = { 'Federal Credit Card': 0, 'Federal RuPay Credit Card': 0 };
             cards.forEach(c => {
-                const cDate = new Date(c.date);
-                if(cDate.getMonth() === now.getMonth() && cDate.getFullYear() === now.getFullYear()) {
-                    if(cardsGroup[c.name] !== undefined) cardsGroup[c.name] += c.amount;
+                const d = new Date(c.date);
+                if (d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()) {
+                    if (cardsGroup[c.name] !== undefined) cardsGroup[c.name] += c.amount;
                 }
             });
-
             [...cards].sort((a,b)=>new Date(b.date)-new Date(a.date)).forEach(c => {
                 const item = document.createElement('div');
-                let limitsMapping = c.name === 'Federal Credit Card' ? (cardMeta.fed_limit || 100000) : (cardMeta.fedrupay_limit || 100000);
-                let currentAccumulatedSpend = cardsGroup[c.name] || 0;
-                let usagePercentage = (currentAccumulatedSpend / limitsMapping) * 100;
-
+                const limit = c.name === 'Federal Credit Card' ? (cardMeta.fed_limit || 100000) : (cardMeta.fedrupay_limit || 100000);
+                const spent = cardsGroup[c.name] || 0;
+                const pct = (spent / limit) * 100;
                 item.className = "flex flex-col bg-white border border-slate-200 p-3 rounded-xl text-xs shadow-sm space-y-1.5";
                 item.innerHTML = `
                     <div class="flex justify-between items-center">
@@ -892,86 +1007,332 @@
                         </div>
                         <div class="flex items-center gap-3">
                             <span class="font-bold text-rose-600">${fRup(c.amount)}</span>
-                            <button onclick="delItem('cc', ${c.id})" class="text-slate-300 hover:text-rose-600"><i class="fa-solid fa-trash-can"></i></button>
+                            <button onclick="delItem('cc',${c.id})" class="text-slate-300 hover:text-rose-600"><i class="fa-solid fa-trash-can"></i></button>
                         </div>
                     </div>
                     <div class="w-full bg-slate-100 rounded-full h-1 mt-1">
-                        <div class="${usagePercentage > 30 ? 'bg-amber-500' : 'bg-indigo-500'} h-1 rounded-full" style="width: ${Math.min(usagePercentage, 100)}%"></div>
+                        <div class="${pct > 30 ? 'bg-amber-500' : 'bg-indigo-500'} h-1 rounded-full" style="width:${Math.min(pct,100)}%"></div>
                     </div>
                     <div class="flex justify-between text-[9px] text-slate-400">
-                        <span>Card usage ratio this month: ${usagePercentage.toFixed(1)}%</span>
-                        <span>Limit cap: ${fRup(limitsMapping)}</span>
-                    </div>
-                `;
+                        <span>Usage this month: ${pct.toFixed(1)}%</span>
+                        <span>Limit: ${fRup(limit)}</span>
+                    </div>`;
                 box.appendChild(item);
             });
         }
 
-        document.getElementById('form-transaction').addEventListener('submit', (e)=>{
-            e.preventDefault();
-            txs.push({ id: Date.now(), type: document.querySelector('input[name="txType"]:checked').value, desc: document.getElementById('tx-desc').value.trim(), amount: parseFloat(document.getElementById('tx-amount').value), cat: document.getElementById('tx-cat').value });
-            document.getElementById('tx-desc').value=''; document.getElementById('tx-amount').value=''; updateAll();
-        });
+        // ============================================================
+        // FEATURE 7: CC CYCLE TRACKER
+        // ============================================================
+        function renderCcCycleTracker() {
+            const box = document.getElementById('cc-cycle-tracker');
+            if (!box) return;
+            box.innerHTML = '';
+            const today = new Date().getDate();
+            const configs = [
+                { name: 'Federal CC', billDay: cardMeta.fed_gen, dueDay: cardMeta.fed_due, color: 'indigo' },
+                { name: 'RuPay CC', billDay: cardMeta.fedrupay_gen, dueDay: cardMeta.fedrupay_due, color: 'emerald' }
+            ];
+            configs.forEach(cfg => {
+                const billDiff = cfg.billDay - today;
+                const dueDiff = cfg.dueDay - today;
+                const billLabel = billDiff === 0 ? '🔴 Today' : billDiff > 0 ? `in ${billDiff} days` : `${Math.abs(billDiff)}d ago`;
+                const dueLabel = dueDiff === 0 ? '🔴 Today' : dueDiff > 0 ? `in ${dueDiff} days` : `${Math.abs(dueDiff)}d ago`;
+                const row = document.createElement('div');
+                row.className = "bg-white rounded-xl p-3 border border-indigo-100 shadow-sm";
+                row.innerHTML = `
+                    <p class="text-[10px] font-bold text-${cfg.color}-700 mb-2 uppercase">${cfg.name}</p>
+                    <div class="grid grid-cols-2 gap-2 text-[10px]">
+                        <div class="bg-slate-50 rounded-lg p-2 border border-slate-100">
+                            <p class="text-slate-400 font-semibold">📄 Bill Generates</p>
+                            <p class="font-bold text-slate-700 mt-0.5">Day ${cfg.billDay} · <span class="${billDiff <= 3 && billDiff >= 0 ? 'text-orange-600' : 'text-slate-500'}">${billLabel}</span></p>
+                        </div>
+                        <div class="bg-slate-50 rounded-lg p-2 border border-slate-100">
+                            <p class="text-slate-400 font-semibold">💳 Payment Due</p>
+                            <p class="font-bold text-slate-700 mt-0.5">Day ${cfg.dueDay} · <span class="${dueDiff <= 3 && dueDiff >= 0 ? 'text-rose-600 font-black' : 'text-slate-500'}">${dueLabel}</span></p>
+                        </div>
+                    </div>`;
+                box.appendChild(row);
+            });
+        }
 
-        document.getElementById('form-friend').addEventListener('submit', (e)=>{
-            e.preventDefault();
-            friends.push({ id: Date.now(), type: document.querySelector('input[name="frType"]:checked').value, name: document.getElementById('fr-name').value.trim(), amount: parseFloat(document.getElementById('fr-amount').value), notes: document.getElementById('fr-notes').value.trim() });
-            document.getElementById('fr-name').value=''; document.getElementById('fr-amount').value=''; document.getElementById('fr-notes').value=''; updateAll();
-        });
+        // ============================================================
+        // FEATURE 10: GOALS
+        // ============================================================
+        function renderGoalList() {
+            const box = document.getElementById('goal-list');
+            if (!box) return;
+            box.innerHTML = '';
 
-        document.getElementById('form-emi').addEventListener('submit', (e)=>{
-            e.preventDefault();
-            emis.push({ id: Date.now(), name: document.getElementById('emi-name').value.trim(), amount: parseFloat(document.getElementById('emi-amount').value), day: document.getElementById('emi-day').value });
-            document.getElementById('emi-name').value=''; document.getElementById('emi-amount').value=''; updateAll();
-        });
+            let totalSaved = goals.reduce((s,g) => s + (g.saved || 0), 0);
+            let totalTarget = goals.reduce((s,g) => s + g.target, 0);
+            const overallPct = totalTarget > 0 ? Math.min((totalSaved / totalTarget) * 100, 100) : 0;
 
-        document.getElementById('form-cc').addEventListener('submit', (e)=>{
-            e.preventDefault();
-            cards.push({ id: Date.now(), name: document.getElementById('cc-cardname').value, desc: document.getElementById('cc-desc').value.trim(), amount: parseFloat(document.getElementById('cc-amount').value), date: document.getElementById('cc-date').value });
-            document.getElementById('cc-desc').value=''; document.getElementById('cc-amount').value=''; updateAll();
-        });
+            document.getElementById('goal-total-saved').innerText = fRup(totalSaved);
+            document.getElementById('goal-total-target').innerText = fRup(totalTarget);
+            document.getElementById('goal-count').innerText = goals.length;
+            document.getElementById('goal-overall-bar').style.width = overallPct + '%';
+            document.getElementById('goal-overall-pct').innerText = overallPct.toFixed(1) + '% overall';
 
-        function delItem(type, id) {
-            if (type==='tx') txs = txs.filter(x=>x.id!==id);
-            if (type==='friend') friends = friends.filter(x=>x.id!==id);
-            if (type==='emi') emis = emis.filter(x=>x.id!==id);
-            if (type==='cc') cards = cards.filter(x=>x.id!==id);
+            if (!goals.length) {
+                box.innerHTML = '<div class="text-center py-10 text-slate-400 text-sm"><i class="fa-solid fa-bullseye text-3xl mb-3 block opacity-30"></i>No goals yet. Add your first savings goal!</div>';
+                return;
+            }
+
+            goals.forEach(g => {
+                const pct = g.target > 0 ? Math.min(((g.saved || 0) / g.target) * 100, 100) : 0;
+                const remaining = g.target - (g.saved || 0);
+                const barColor = pct >= 100 ? 'bg-emerald-500' : pct >= 60 ? 'bg-teal-400' : pct >= 30 ? 'bg-amber-400' : 'bg-rose-400';
+                const card = document.createElement('div');
+                card.className = "bg-white border border-slate-200 rounded-2xl p-4 shadow-sm space-y-3";
+                card.innerHTML = `
+                    <div class="flex justify-between items-start">
+                        <div class="flex items-center gap-3">
+                            <span class="text-2xl">${g.icon || '🎯'}</span>
+                            <div>
+                                <h3 class="font-bold text-slate-800">${g.name}</h3>
+                                <p class="text-[10px] text-slate-400">Target: ${fRup(g.target)}</p>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <p class="font-black text-emerald-600 text-lg">${pct.toFixed(1)}%</p>
+                            <p class="text-[10px] text-slate-400">${remaining > 0 ? fRup(remaining) + ' to go' : '🎉 Achieved!'}</p>
+                        </div>
+                    </div>
+                    <div class="w-full bg-slate-100 rounded-full h-3">
+                        <div class="${barColor} h-3 rounded-full transition-all duration-700" style="width:${pct}%"></div>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs text-slate-500">Saved: <strong class="text-slate-700">${fRup(g.saved || 0)}</strong></span>
+                            <div class="flex gap-1">
+                                <button onclick="addToGoal(${g.id}, 500)" class="text-[10px] bg-emerald-50 border border-emerald-200 text-emerald-700 px-2 py-0.5 rounded-lg font-bold hover:bg-emerald-100">+₹500</button>
+                                <button onclick="addToGoal(${g.id}, 1000)" class="text-[10px] bg-emerald-50 border border-emerald-200 text-emerald-700 px-2 py-0.5 rounded-lg font-bold hover:bg-emerald-100">+₹1K</button>
+                                <button onclick="promptAddToGoal(${g.id})" class="text-[10px] bg-slate-100 border border-slate-200 text-slate-600 px-2 py-0.5 rounded-lg font-bold hover:bg-slate-200">+Custom</button>
+                            </div>
+                        </div>
+                        <button onclick="delItem('goal',${g.id})" class="text-slate-300 hover:text-rose-600 text-xs"><i class="fa-solid fa-trash-can"></i></button>
+                    </div>`;
+                box.appendChild(card);
+            });
+        }
+
+        function addToGoal(id, amount) {
+            const g = goals.find(g => g.id === id);
+            if (g) { g.saved = (g.saved || 0) + amount; updateAll(); }
+        }
+
+        function promptAddToGoal(id) {
+            const amt = parseFloat(prompt('Enter amount to add (₹):'));
+            if (!isNaN(amt) && amt > 0) addToGoal(id, amt);
+        }
+
+        // ============================================================
+        // SETTLE / PAY HELPERS
+        // ============================================================
+        function settleFriendDirectly(name, netAmount) {
+            if (netAmount === 0) return;
+            const abs = Math.abs(netAmount);
+            friends.push({ id: Date.now(), type: netAmount > 0 ? 'borrowed' : 'lent', name, amount: abs, notes: 'Auto Settlement Balance Cleared', date: todayISO() });
+            txs.push({ id: Date.now() + 1, type: netAmount > 0 ? 'income' : 'expense', desc: `Settled peer: ${name}`, amount: abs, cat: 'Others', date: todayISO() });
             updateAll();
         }
 
-        function updateChart() {
-            const categories = ['Chaya & Snacks', 'Food & Dining', 'Entertainment', 'Travel', 'Groceries', 'EMI Payments', 'Others'];
-            const categoryTotals = categories.map(cat => txs.filter(t => t.cat === cat && t.type === 'expense').reduce((sum, t) => sum + t.amount, 0));
-            const hasExp = categoryTotals.some(v => v > 0);
-            const isDark = document.documentElement.classList.contains('dark');
-
-            const data = {
-                labels: hasExp ? categories : ['No Data'],
-                datasets: [{ data: hasExp ? categoryTotals : [1], backgroundColor: hasExp ? ['#eab308', '#f97316', '#a855f7', '#06b6d4', '#22c55e', '#ef4444', '#94a3b8'] : (isDark ? ['#334155'] : ['#e2e8f0']), borderWidth: 0 }]
-            };
-
-            if (expenseChart) {
-                expenseChart.data = data; 
-                expenseChart.options.plugins.legend.labels.color = isDark ? '#f1f5f9' : '#334155';
-                expenseChart.update();
-            } else {
-                expenseChart = new Chart(document.getElementById('expenseChart').getContext('2d'), {
-                    type: 'doughnut',
-                    data: data,
-                    options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 10 }, color: isDark ? '#f1f5f9' : '#334155' } } }, cutout: '76%' }
-                });
+        function payEmiDirectly(id) {
+            const e = emis.find(e => e.id === id);
+            if (e) {
+                const now = new Date();
+                txs.push({ id: Date.now(), type: 'expense', desc: `Paid EMI: ${e.name}`, amount: e.amount, cat: 'EMI Payments', emiRefId: e.id, paidMonth: now.getMonth(), paidYear: now.getFullYear(), date: todayISO() });
+                updateAll();
             }
         }
 
-        const daySelect = document.getElementById('emi-day');
-        for (let i = 1; i <= 31; i++) {
-            let opt = document.createElement('option'); opt.value = i; opt.innerText = `Day ${i}`; daySelect.appendChild(opt);
+        function delItem(type, id) {
+            if (type === 'tx') txs = txs.filter(x => x.id !== id);
+            if (type === 'friend') friends = friends.filter(x => x.id !== id);
+            if (type === 'emi') emis = emis.filter(x => x.id !== id);
+            if (type === 'cc') cards = cards.filter(x => x.id !== id);
+            if (type === 'goal') goals = goals.filter(x => x.id !== id);
+            updateAll();
         }
 
-        document.getElementById('cc-date').value = new Date().toISOString().split('T')[0];
+        // ============================================================
+        // CARD META
+        // ============================================================
+        function saveCardMeta() {
+            cardMeta.fed_gen = parseInt(document.getElementById('cc-gen-fed').value) || 15;
+            cardMeta.fed_due = parseInt(document.getElementById('cc-due-fed').value) || 5;
+            cardMeta.fed_limit = parseFloat(document.getElementById('cc-limit-fed').value) || 100000;
+            cardMeta.fedrupay_gen = parseInt(document.getElementById('cc-gen-fedrupay').value) || 20;
+            cardMeta.fedrupay_due = parseInt(document.getElementById('cc-due-fedrupay').value) || 10;
+            cardMeta.fedrupay_limit = parseFloat(document.getElementById('cc-limit-fedrupay').value) || 100000;
+            saveToFirestore(); updateAll();
+        }
+
+        function loadCardMetaInputs() {
+            document.getElementById('cc-gen-fed').value = cardMeta.fed_gen;
+            document.getElementById('cc-due-fed').value = cardMeta.fed_due;
+            document.getElementById('cc-limit-fed').value = cardMeta.fed_limit || 100000;
+            document.getElementById('cc-gen-fedrupay').value = cardMeta.fedrupay_gen;
+            document.getElementById('cc-due-fedrupay').value = cardMeta.fedrupay_due;
+            document.getElementById('cc-limit-fedrupay').value = cardMeta.fedrupay_limit || 100000;
+        }
+
+        // ============================================================
+        // EXPORT STATEMENT
+        // ============================================================
+        function generateImageStatement() {
+            const now = new Date();
+            const months = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+            const currentMonthName = months[now.getMonth()];
+            let inc = txs.filter(t => t.type === 'income').reduce((s,t) => s+t.amount, 0);
+            let exp = txs.filter(t => t.type === 'expense').reduce((s,t) => s+t.amount, 0);
+            let grandFrNet = friends.reduce((s,f) => s + (f.type === 'lent' ? f.amount : -f.amount), 0);
+            let totalCcSum = cards.reduce((s,c) => s+c.amount, 0);
+            let totalEmiOverhead = emis.reduce((s,e) => s+e.amount, 0);
+            const tpl = document.getElementById('statement-image-template');
+            tpl.innerHTML = `
+                <div class="bg-slate-950 text-slate-100 font-sans p-8 rounded-3xl border border-slate-800 shadow-2xl">
+                    <div class="flex justify-between items-start border-b border-slate-800 pb-6 mb-6">
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <div class="bg-emerald-500 text-slate-950 p-2 rounded-xl text-lg font-black shadow-lg"><i class="fa-solid fa-wallet"></i></div>
+                                <h1 class="text-2xl font-black text-white">My Wallet</h1>
+                            </div>
+                            <p class="text-[11px] text-slate-400 mt-1.5 uppercase font-semibold">Premium Multi-Tab Account Ledger Report</p>
+                        </div>
+                        <div class="text-right">
+                            <span class="bg-gradient-to-r from-emerald-500/20 to-teal-500/20 border border-emerald-500/40 text-emerald-300 font-bold px-4 py-1.5 rounded-xl text-xs">${currentMonthName} ${now.getFullYear()}</span>
+                            <p class="text-[10px] text-slate-500 mt-2">Issued: ${now.toLocaleDateString()}</p>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-4 gap-4 mb-8">
+                        <div class="bg-slate-900 p-4 rounded-xl border border-slate-800"><span class="text-[10px] text-slate-400 uppercase font-bold">Liquid Balance</span><span class="block text-xl font-black text-emerald-400 mt-2">${fRup(inc - exp)}</span></div>
+                        <div class="bg-slate-900 p-4 rounded-xl border border-slate-800"><span class="text-[10px] text-slate-400 uppercase font-bold">Peer Ledgers</span><span class="block text-xl font-black ${grandFrNet >= 0 ? 'text-teal-400' : 'text-rose-400'} mt-2">${fRup(Math.abs(grandFrNet))}</span></div>
+                        <div class="bg-slate-900 p-4 rounded-xl border border-slate-800"><span class="text-[10px] text-slate-400 uppercase font-bold">Active EMIs</span><span class="block text-xl font-black text-amber-400 mt-2">${fRup(totalEmiOverhead)}</span></div>
+                        <div class="bg-slate-900 p-4 rounded-xl border border-slate-800"><span class="text-[10px] text-slate-400 uppercase font-bold">Credit Spends</span><span class="block text-xl font-black text-indigo-400 mt-2">${fRup(totalCcSum)}</span></div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-6 items-start">
+                        <div class="bg-slate-900/50 p-4 rounded-2xl border border-slate-800">
+                            <h3 class="text-xs font-bold text-emerald-400 mb-3 uppercase border-b border-slate-800 pb-2">Cash & Bank Logs</h3>
+                            <div class="space-y-2">${txs.length === 0 ? '<p class="text-[10px] text-slate-500 py-2">No records.</p>' : txs.slice(0,5).map(t=>`<div class="flex justify-between items-center bg-slate-950 px-3 py-2 rounded-xl text-xs border-l-4 ${t.type==='income'?'border-teal-500':'border-rose-500'}"><div><p class="text-slate-100 font-bold">${t.desc}</p><span class="text-[9px] text-slate-400">${t.cat}${t.date?' · '+t.date:''}</span></div><span class="font-bold text-sm ${t.type==='income'?'text-teal-400':'text-rose-400'}">${t.type==='income'?'+':'-'}${fRup(t.amount)}</span></div>`).join('')}</div>
+                        </div>
+                        <div class="bg-slate-900/50 p-4 rounded-2xl border border-slate-800">
+                            <h3 class="text-xs font-bold text-teal-400 mb-3 uppercase border-b border-slate-800 pb-2">Friends Ledger</h3>
+                            <div class="space-y-2">${friends.length === 0 ? '<p class="text-[10px] text-slate-500 py-2">No records.</p>' : friends.slice(0,5).map(f=>`<div class="flex justify-between items-center bg-slate-950 px-3 py-2 rounded-xl text-xs border-l-4 ${f.type==='lent'?'border-teal-500':'border-rose-500'}"><p class="text-slate-100 font-bold">${f.name}</p><span class="font-bold text-slate-200">${fRup(f.amount)}</span></div>`).join('')}</div>
+                        </div>
+                    </div>
+                </div>`;
+            setTimeout(() => {
+                html2canvas(tpl, { scale: 2, backgroundColor: "#020617", logging: false, useCORS: true }).then(canvas => {
+                    const link = document.createElement("a");
+                    link.href = canvas.toDataURL("image/png");
+                    link.download = `Wallet_Statement_${currentMonthName}_${now.getFullYear()}.png`;
+                    link.click();
+                });
+            }, 120);
+        }
+
+        // ============================================================
+        // FORM SUBMISSIONS
+        // ============================================================
+        document.getElementById('form-transaction').addEventListener('submit', (e) => {
+            e.preventDefault();
+            txs.push({
+                id: Date.now(),
+                type: document.querySelector('input[name="txType"]:checked').value,
+                desc: document.getElementById('tx-desc').value.trim(),
+                amount: parseFloat(document.getElementById('tx-amount').value),
+                cat: document.getElementById('tx-cat').value,
+                date: todayISO()
+            });
+            document.getElementById('tx-desc').value = '';
+            document.getElementById('tx-amount').value = '';
+            updateAll();
+        });
+
+        document.getElementById('form-friend').addEventListener('submit', (e) => {
+            e.preventDefault();
+            friends.push({
+                id: Date.now(),
+                type: document.querySelector('input[name="frType"]:checked').value,
+                name: document.getElementById('fr-name').value.trim(),
+                amount: parseFloat(document.getElementById('fr-amount').value),
+                notes: document.getElementById('fr-notes').value.trim(),
+                date: todayISO()
+            });
+            document.getElementById('fr-name').value = '';
+            document.getElementById('fr-amount').value = '';
+            document.getElementById('fr-notes').value = '';
+            updateAll();
+        });
+
+        document.getElementById('form-emi').addEventListener('submit', (e) => {
+            e.preventDefault();
+            emis.push({
+                id: Date.now(),
+                name: document.getElementById('emi-name').value.trim(),
+                amount: parseFloat(document.getElementById('emi-amount').value),
+                day: document.getElementById('emi-day').value
+            });
+            document.getElementById('emi-name').value = '';
+            document.getElementById('emi-amount').value = '';
+            updateAll();
+        });
+
+        document.getElementById('form-cc').addEventListener('submit', (e) => {
+            e.preventDefault();
+            cards.push({
+                id: Date.now(),
+                name: document.getElementById('cc-cardname').value,
+                desc: document.getElementById('cc-desc').value.trim(),
+                amount: parseFloat(document.getElementById('cc-amount').value),
+                date: todayISO()
+            });
+            document.getElementById('cc-desc').value = '';
+            document.getElementById('cc-amount').value = '';
+            updateAll();
+        });
+
+        document.getElementById('form-goal').addEventListener('submit', (e) => {
+            e.preventDefault();
+            goals.push({
+                id: Date.now(),
+                name: document.getElementById('goal-name').value.trim(),
+                target: parseFloat(document.getElementById('goal-target').value),
+                saved: parseFloat(document.getElementById('goal-saved').value) || 0,
+                icon: document.getElementById('goal-icon').value
+            });
+            document.getElementById('goal-name').value = '';
+            document.getElementById('goal-target').value = '';
+            document.getElementById('goal-saved').value = '';
+            updateAll();
+        });
+
+        // ============================================================
+        // INIT
+        // ============================================================
+        // Show today's date on all auto-date displays
+        function refreshAutoDateDisplays() {
+            const d = new Date().toLocaleDateString('en-IN', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' });
+            ['tx-auto-date', 'fr-auto-date', 'cc-auto-date'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.textContent = d;
+            });
+        }
+        refreshAutoDateDisplays();
+        setInterval(refreshAutoDateDisplays, 60000); // refresh every minute in case day changes
+
+        // Populate EMI day dropdown
+        const daySelect = document.getElementById('emi-day');
+        for (let i = 1; i <= 31; i++) {
+            let opt = document.createElement('option');
+            opt.value = i; opt.innerText = `Day ${i}`;
+            daySelect.appendChild(opt);
+        }
+
         loadCardMetaInputs();
 
-        // 🔥 Wait for Firebase module to be ready, then start listener
         function waitForFirebase() {
             if (window._firebaseReady && window._dataDoc && window._onSnapshot) {
                 startFirestoreListener();
