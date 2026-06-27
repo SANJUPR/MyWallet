@@ -48,6 +48,11 @@
         .dark .bg-slate-50\/50 { background-color: #1e293b\/50 !important; }
         /* Budget bar animation */
         .budget-bar { transition: width 0.6s ease; }
+        /* Withdraw modal dark mode */
+        .dark #withdraw-modal .bg-white { background-color: #1e293b !important; }
+        .dark #withdraw-modal input { background-color: #334155 !important; color: #f1f5f9 !important; border-color: #475569 !important; }
+        .dark #withdraw-modal .bg-amber-50 { background-color: #451a03 !important; border-color: #92400e !important; }
+        .dark #withdraw-modal .bg-slate-100 { background-color: #334155 !important; }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-800 font-sans antialiased pb-12 transition-colors duration-200">
@@ -76,6 +81,7 @@
                 <button onclick="switchTab('emis')" id="tab-emis" class="py-3 px-4 border-b-2 border-transparent text-slate-500 hover:text-slate-700 flex items-center gap-1.5"><i class="fa-solid fa-calendar-check"></i> EMIs</button>
                 <button onclick="switchTab('cards')" id="tab-cards" class="py-3 px-4 border-b-2 border-transparent text-slate-500 hover:text-slate-700 flex items-center gap-1.5"><i class="fa-solid fa-credit-card"></i> Cards</button>
                 <button onclick="switchTab('goals')" id="tab-goals" class="py-3 px-4 border-b-2 border-transparent text-slate-500 hover:text-slate-700 flex items-center gap-1.5"><i class="fa-solid fa-bullseye"></i> Goals</button>
+                <button onclick="switchTab('categories')" id="tab-categories" class="py-3 px-4 border-b-2 border-transparent text-slate-500 hover:text-slate-700 flex items-center gap-1.5"><i class="fa-solid fa-tags"></i> Categories</button>
             </div>
             <div class="flex items-center gap-2 my-2">
                 <button onclick="clearAllDataWithConfirmation()" title="Clear All Ledger Data" class="bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-600 px-3 py-1.5 rounded-xl flex items-center gap-1.5 text-xs font-semibold shadow-sm transition-all">
@@ -127,6 +133,12 @@
                 <div class="w-full" style="height:220px;"><canvas id="monthlyBarChart"></canvas></div>
             </div>
 
+            <!-- Month-over-Month Comparison Card -->
+            <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-100">
+                <h2 class="text-sm font-semibold text-slate-800 mb-4 flex items-center gap-2"><i class="fa-solid fa-arrows-left-right text-indigo-600"></i> Category Spending: This Month vs Last Month</h2>
+                <div id="mom-comparison-dash" class="grid grid-cols-1 sm:grid-cols-2 gap-2"></div>
+            </div>
+
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <!-- Entry Form -->
                 <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 h-fit">
@@ -153,20 +165,25 @@
                         </div>
                         <div>
                             <select id="tx-cat" required class="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-emerald-600">
-                                <option value="Chaya & Snacks">☕ Chaya & Snacks</option>
-                                <option value="Food & Dining">🍲 Food & Dining</option>
-                                <option value="Entertainment">🎬 Entertainment</option>
-                                <option value="Salary">💰 Salary / Profits</option>
-                                <option value="Travel">🚗 Travel & Fuel</option>
-                                <option value="Groceries">🛒 Groceries</option>
-                                <option value="EMI Payments">📉 EMI Payments</option>
-                                <option value="Others">📦 Others</option>
                             </select>
                         </div>
                         <!-- Feature 2: Auto date shown readonly -->
                         <div class="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-xs text-slate-500">
                             <i class="fa-solid fa-calendar-day text-emerald-500"></i>
                             <span>Date: <strong id="tx-auto-date" class="text-slate-700"></strong></span>
+                        </div>
+                        <!-- Goal-linked Expense Deduction -->
+                        <div id="goal-link-section" class="hidden">
+                            <label class="flex items-center gap-2 cursor-pointer mb-2">
+                                <input type="checkbox" id="tx-from-goal" onchange="toggleGoalLinkDropdown()" class="accent-purple-600 w-4 h-4">
+                                <span class="text-xs font-semibold text-purple-700"><i class="fa-solid fa-piggy-bank mr-1"></i>Spending from Goal Savings?</span>
+                            </label>
+                            <div id="tx-goal-picker-wrap" class="hidden">
+                                <select id="tx-goal-picker" class="w-full px-4 py-2 bg-purple-50 border border-purple-200 rounded-xl text-sm text-purple-800 focus:outline-none focus:border-purple-500">
+                                    <option value="">— Select Goal to Deduct From —</option>
+                                </select>
+                                <p class="text-[10px] text-purple-400 mt-1 pl-1">The expense amount will be deducted from the selected goal's saved balance.</p>
+                            </div>
                         </div>
                         <button type="submit" class="w-full py-2.5 bg-emerald-600 text-white font-semibold text-sm rounded-xl shadow-md hover:bg-emerald-700">Save Entry</button>
                     </form>
@@ -204,14 +221,6 @@
                             <button onclick="setTxFilter('expense')" id="filter-expense" class="filter-btn text-[10px] px-3 py-1 rounded-full font-bold bg-slate-100 text-slate-600 border border-slate-200 hover:bg-rose-50">Expense</button>
                             <select id="filter-cat" onchange="renderTxList()" class="text-[10px] px-2 py-1 rounded-full border border-slate-200 bg-slate-100 text-slate-600 focus:outline-none">
                                 <option value="">All Categories</option>
-                                <option value="Chaya & Snacks">☕ Chaya & Snacks</option>
-                                <option value="Food & Dining">🍲 Food & Dining</option>
-                                <option value="Entertainment">🎬 Entertainment</option>
-                                <option value="Salary">💰 Salary</option>
-                                <option value="Travel">🚗 Travel</option>
-                                <option value="Groceries">🛒 Groceries</option>
-                                <option value="EMI Payments">📉 EMI Payments</option>
-                                <option value="Others">📦 Others</option>
                             </select>
                             <select id="filter-sort" onchange="renderTxList()" class="text-[10px] px-2 py-1 rounded-full border border-slate-200 bg-slate-100 text-slate-600 focus:outline-none">
                                 <option value="newest">Newest First</option>
@@ -281,6 +290,18 @@
                     <div>
                         <label class="block text-xs font-semibold text-slate-400 uppercase mb-1">Deduction Day of Month</label>
                         <select id="emi-day" required class="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-emerald-600"></select>
+                    </div>
+                    <!-- Tenure fields -->
+                    <div class="bg-indigo-50 border border-indigo-100 rounded-xl p-3 space-y-3">
+                        <p class="text-[10px] font-bold text-indigo-600 uppercase tracking-wider flex items-center gap-1"><i class="fa-solid fa-hourglass-half"></i> Tenure (optional)</p>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-400 uppercase mb-1">Total Months</label>
+                            <input type="number" id="emi-total-months" placeholder="e.g., 24" min="1" max="360" class="w-full px-4 py-2 bg-white border border-indigo-200 rounded-xl text-sm focus:outline-none focus:border-indigo-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-400 uppercase mb-1">Start Month</label>
+                            <input type="month" id="emi-start-month" class="w-full px-4 py-2 bg-white border border-indigo-200 rounded-xl text-sm focus:outline-none focus:border-indigo-500">
+                        </div>
                     </div>
                     <button type="submit" class="w-full py-2.5 bg-emerald-600 text-white font-semibold text-sm rounded-xl hover:bg-emerald-700">Add EMI Track</button>
                 </form>
@@ -416,6 +437,46 @@
 
     </main>
 
+
+
+    <!-- ==================== CATEGORIES TAB ==================== -->
+    <div id="content-categories" class="tab-content hidden max-w-6xl mx-auto p-4 md:p-6">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 h-fit">
+                <h2 class="text-lg font-semibold text-slate-800 mb-1"><i class="fa-solid fa-tag text-emerald-600 mr-1"></i> Add Custom Category</h2>
+                <p class="text-[10px] text-slate-400 mb-4">Create your own spending categories with any emoji icon.</p>
+                <form id="form-custom-cat" class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-400 uppercase mb-1">Pick an Emoji Icon</label>
+                        <div id="emoji-picker" class="flex flex-wrap gap-2 p-3 bg-slate-50 border border-slate-200 rounded-xl max-h-40 overflow-y-auto">
+                        </div>
+                        <input type="hidden" id="cat-emoji" value="🏷️">
+                        <div class="mt-2 flex items-center gap-2 bg-white border border-emerald-300 rounded-xl px-3 py-2">
+                            <span id="cat-emoji-preview" class="text-2xl">🏷️</span>
+                            <span class="text-xs text-slate-500">Selected emoji — or type your own:</span>
+                            <input type="text" id="cat-emoji-custom" maxlength="2" placeholder="✍️" class="w-12 text-center text-lg border-b border-emerald-400 focus:outline-none bg-transparent" oninput="selectEmoji(this.value)">
+                        </div>
+                    </div>
+                    <div>
+                        <input type="text" id="cat-name" placeholder="Category Name (e.g., Petrol, Medicine)" required class="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-emerald-600">
+                    </div>
+                    <button type="submit" class="w-full py-2.5 bg-emerald-600 text-white font-semibold text-sm rounded-xl hover:bg-emerald-700">Add Category</button>
+                </form>
+            </div>
+            <div class="lg:col-span-2 space-y-4">
+                <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-100">
+                    <h2 class="text-lg font-semibold text-slate-800 mb-4"><i class="fa-solid fa-grid-2 text-emerald-600 mr-1"></i> All Categories</h2>
+                    <div id="cat-list" class="grid grid-cols-2 sm:grid-cols-3 gap-3"></div>
+                </div>
+                <!-- Month-over-Month Comparison Card -->
+                <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-100">
+                    <h2 class="text-sm font-semibold text-slate-800 mb-4 flex items-center gap-2"><i class="fa-solid fa-arrows-left-right text-indigo-600"></i> Month-over-Month Spending Comparison</h2>
+                    <div id="mom-comparison" class="space-y-2"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div id="statement-image-template" class="absolute left-[-9999px] top-[-9999px] w-[1000px] bg-slate-950 p-10 rounded-3xl"></div>
 
     <script>
@@ -434,6 +495,23 @@
         let expenseChart = null;
         let monthlyBarChart = null;
         let cardMeta = { fed_gen: 15, fed_due: 5, fed_limit: 100000, fedrupay_gen: 20, fedrupay_due: 10, fedrupay_limit: 100000 };
+
+        // ── NEW: Custom Categories ──
+        let customCategories = []; // [{id, emoji, name}]
+
+        // Built-in category list helper (merges defaults + custom)
+        const DEFAULT_CATS = [
+            {emoji:'☕', name:'Chaya & Snacks'},
+            {emoji:'🍲', name:'Food & Dining'},
+            {emoji:'🎬', name:'Entertainment'},
+            {emoji:'💰', name:'Salary'},
+            {emoji:'🚗', name:'Travel'},
+            {emoji:'🛒', name:'Groceries'},
+            {emoji:'📉', name:'EMI Payments'},
+            {emoji:'📦', name:'Others'}
+        ];
+        function getAllCats() { return [...DEFAULT_CATS, ...customCategories]; }
+        function getCatLabel(name) { const c = getAllCats().find(c=>c.name===name); return c ? `${c.emoji} ${c.name}` : name; }
 
         const fRup = (num) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(num);
         const todayStr = () => new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
@@ -467,15 +545,16 @@
             _isSyncing = true;
             try {
                 const now = Date.now();
-                const keep = 31 * 24 * 60 * 60 * 1000;
+                // ✅ FIX: No auto-purge — all data kept permanently until user manually clears
                 await window._setDoc(window._dataDoc, {
-                    txs: txs.filter(i => (now - i.id) < keep),
-                    friends: friends.filter(i => (now - i.id) < keep),
+                    txs: txs,
+                    friends: friends,
                     emis: emis,
-                    cards: cards.filter(i => (now - i.id) < keep),
+                    cards: cards,
                     goals: goals,
                     budgets: budgets,
                     cardMeta: cardMeta,
+                    customCategories: customCategories,
                     theme: localStorage.getItem('theme') || 'light',
                     lastUpdated: now
                 });
@@ -505,6 +584,7 @@
                     goals = data.goals || [];
                     if (data.budgets) budgets = data.budgets;
                     if (data.cardMeta) { cardMeta = data.cardMeta; loadCardMetaInputs(); }
+                    if (data.customCategories) customCategories = data.customCategories;
                     renderAll();
                 } else { renderAll(); }
             }, (err) => {
@@ -516,6 +596,7 @@
                 cards = JSON.parse(localStorage.getItem('mx_cards')) || [];
                 goals = JSON.parse(localStorage.getItem('mx_goals')) || [];
                 if (localStorage.getItem('mx_budgets')) budgets = JSON.parse(localStorage.getItem('mx_budgets'));
+                if (localStorage.getItem('mx_customCategories')) customCategories = JSON.parse(localStorage.getItem('mx_customCategories'));
                 renderAll();
             });
         }
@@ -560,6 +641,17 @@
             const inc = document.querySelector('input[name="txType"]:checked').value === 'income';
             document.getElementById('tx-income-lbl').className = inc ? "cursor-pointer border-2 border-teal-500 bg-teal-50/50 text-teal-700 rounded-xl p-2.5 flex items-center justify-center font-medium text-sm transition-all" : "cursor-pointer border border-slate-200 text-slate-600 rounded-xl p-2.5 flex items-center justify-center font-medium text-sm transition-all";
             document.getElementById('tx-expense-lbl').className = !inc ? "cursor-pointer border-2 border-rose-500 bg-rose-50/50 text-rose-700 rounded-xl p-2.5 flex items-center justify-center font-medium text-sm transition-all" : "cursor-pointer border border-slate-200 text-slate-600 rounded-xl p-2.5 flex items-center justify-center font-medium text-sm transition-all";
+            // Show goal-link section only for expense
+            const glSection = document.getElementById('goal-link-section');
+            if (glSection) {
+                if (inc) {
+                    glSection.classList.add('hidden');
+                    document.getElementById('tx-from-goal').checked = false;
+                    document.getElementById('tx-goal-picker-wrap').classList.add('hidden');
+                } else {
+                    glSection.classList.remove('hidden');
+                }
+            }
         }
 
         function toggleFrStyle() {
@@ -636,6 +728,9 @@
             renderBudgetList();
             renderGoalList();
             renderCcCycleTracker();
+            renderCatList();
+            renderMoMComparison();
+            populateCategoryDropdowns();
             updateCharts();
         }
 
@@ -752,10 +847,10 @@
             const box = document.getElementById('budget-list');
             box.innerHTML = '';
             const now = new Date();
-            const cats = ['Chaya & Snacks', 'Food & Dining', 'Entertainment', 'Travel', 'Groceries', 'EMI Payments', 'Others'];
-            const icons = { 'Chaya & Snacks': '☕', 'Food & Dining': '🍲', 'Entertainment': '🎬', 'Travel': '🚗', 'Groceries': '🛒', 'EMI Payments': '📉', 'Others': '📦' };
+            const cats = getAllCats();
 
-            cats.forEach(cat => {
+            cats.forEach(c => {
+                const cat = c.name;
                 const limit = budgets[cat] || 0;
                 const spent = txs.filter(t => {
                     const d = new Date(t.date || t.id);
@@ -768,7 +863,7 @@
                 row.className = "space-y-1";
                 row.innerHTML = `
                     <div class="flex justify-between items-center text-xs">
-                        <span class="font-semibold text-slate-700">${icons[cat]} ${cat}</span>
+                        <span class="font-semibold text-slate-700">${c.emoji} ${cat}</span>
                         ${budgetEditMode
                             ? `<input type="number" value="${limit}" onchange="budgets['${cat}']=parseInt(this.value)||0;renderBudgetList();" class="w-24 px-2 py-0.5 text-xs rounded-lg border border-emerald-300 bg-white text-slate-800 text-right focus:outline-none">`
                             : `<span class="text-slate-500">${fRup(spent)} <span class="text-slate-300">/</span> ${limit > 0 ? fRup(limit) : '<span class="text-slate-400 italic">No limit</span>'}</span>`
@@ -789,13 +884,15 @@
         }
 
         function updateDoughnutChart() {
-            const categories = ['Chaya & Snacks', 'Food & Dining', 'Entertainment', 'Travel', 'Groceries', 'EMI Payments', 'Others'];
+            const cats = getAllCats();
+            const categories = cats.map(c => c.name);
             const totals = categories.map(cat => txs.filter(t => t.cat === cat && t.type === 'expense').reduce((s,t) => s + t.amount, 0));
             const hasData = totals.some(v => v > 0);
             const isDark = document.documentElement.classList.contains('dark');
+            const COLORS = ['#eab308','#f97316','#a855f7','#06b6d4','#22c55e','#ef4444','#94a3b8','#3b82f6','#ec4899','#14b8a6','#f59e0b','#8b5cf6'];
             const data = {
-                labels: hasData ? categories : ['No Data'],
-                datasets: [{ data: hasData ? totals : [1], backgroundColor: hasData ? ['#eab308','#f97316','#a855f7','#06b6d4','#22c55e','#ef4444','#94a3b8'] : (isDark ? ['#334155'] : ['#e2e8f0']), borderWidth: 0 }]
+                labels: hasData ? categories.filter((_,i) => totals[i] > 0) : ['No Data'],
+                datasets: [{ data: hasData ? totals.filter(v => v > 0) : [1], backgroundColor: hasData ? COLORS.slice(0, totals.filter(v=>v>0).length) : (isDark ? ['#334155'] : ['#e2e8f0']), borderWidth: 0 }]
             };
             if (expenseChart) {
                 expenseChart.data = data;
@@ -886,10 +983,11 @@
                 const item = document.createElement('div');
                 item.className = "flex justify-between items-center bg-slate-50 border border-slate-100 p-2.5 rounded-xl text-xs";
                 const dateStr = t.date ? new Date(t.date).toLocaleDateString('en-IN', {day:'2-digit',month:'short'}) : '';
+                const goalBadge = t.goalRef ? (() => { const g = goals.find(g=>g.id==t.goalRef); return g ? `<span class="text-[9px] bg-purple-50 text-purple-600 border border-purple-200 px-1.5 py-0.5 rounded-full font-bold ml-1">🎯 ${g.name}</span>` : ''; })() : '';
                 item.innerHTML = `
                     <div>
                         <p class="font-bold text-slate-700">${t.desc}</p>
-                        <span class="text-[10px] text-slate-400">${t.cat}${dateStr ? ' · ' + dateStr : ''}</span>
+                        <span class="text-[10px] text-slate-400">${t.cat}${dateStr ? ' · ' + dateStr : ''}${goalBadge}</span>
                     </div>
                     <div class="flex items-center gap-2">
                         <span class="font-bold ${t.type==='income'?'text-teal-600':'text-rose-600'}">${t.type==='income'?'+':'-'}${fRup(t.amount)}</span>
@@ -940,38 +1038,115 @@
         }
 
         // ============================================================
-        // EMI LIST (Feature 3: countdown badges)
+        // EMI LIST (Feature 3: countdown badges + tenure progress)
         // ============================================================
         function renderEmiList() {
             const box = document.getElementById('emi-list'); box.innerHTML = '';
             if (!emis.length) { box.innerHTML = '<p class="text-xs text-slate-400 py-4 text-center">No active configured entries.</p>'; return; }
-            const today = new Date().getDate();
+            const today = new Date();
+            const todayDay = today.getDate();
+
             [...emis].sort((a,b)=>parseInt(a.day)-parseInt(b.day)).forEach(e => {
                 const paid = isEmiPaidThisMonth(e.id);
-                const diff = parseInt(e.day) - today;
+                const diff = parseInt(e.day) - todayDay;
+
+                // ── Countdown badge ──
                 let countdownBadge = '';
                 if (!paid) {
-                    if (diff < 0) countdownBadge = `<span class="px-2 py-0.5 text-[9px] font-bold rounded-full bg-rose-50 text-rose-700 border border-rose-200">Overdue</span>`;
-                    else if (diff === 0) countdownBadge = `<span class="px-2 py-0.5 text-[9px] font-bold rounded-full bg-red-100 text-red-700 border border-red-300 animate-pulse">Due Today!</span>`;
-                    else if (diff <= 3) countdownBadge = `<span class="px-2 py-0.5 text-[9px] font-bold rounded-full bg-orange-50 text-orange-700 border border-orange-200">Due in ${diff}d</span>`;
-                    else countdownBadge = `<span class="px-2 py-0.5 text-[9px] font-bold rounded-full bg-slate-100 text-slate-500 border border-slate-200">${diff} days left</span>`;
+                    if (diff < 0)      countdownBadge = `<span class="px-2 py-0.5 text-[9px] font-bold rounded-full bg-rose-50 text-rose-700 border border-rose-200">Overdue</span>`;
+                    else if (diff===0) countdownBadge = `<span class="px-2 py-0.5 text-[9px] font-bold rounded-full bg-red-100 text-red-700 border border-red-300 animate-pulse">Due Today!</span>`;
+                    else if (diff<=3)  countdownBadge = `<span class="px-2 py-0.5 text-[9px] font-bold rounded-full bg-orange-50 text-orange-700 border border-orange-200">Due in ${diff}d</span>`;
+                    else               countdownBadge = `<span class="px-2 py-0.5 text-[9px] font-bold rounded-full bg-slate-100 text-slate-500 border border-slate-200">${diff} days left</span>`;
                 }
+
+                // ── Tenure / progress calculations ──
+                let tenureHtml = '';
+                if (e.totalMonths && e.startMonth) {
+                    // paidCount = actual payments logged against this EMI
+                    const paidCount = txs.filter(t => t.emiRefId === e.id).length;
+                    const remaining = Math.max(e.totalMonths - paidCount, 0);
+                    const pct       = Math.min((paidCount / e.totalMonths) * 100, 100);
+                    const done      = paidCount >= e.totalMonths;
+
+                    // Estimated end date
+                    const [startY, startM] = e.startMonth.split('-').map(Number);
+                    const endDate = new Date(startY, startM - 1 + e.totalMonths - 1, parseInt(e.day));
+                    const endLabel = endDate.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' });
+
+                    // Bar colour
+                    const barCol = done ? 'bg-emerald-500' : pct >= 75 ? 'bg-teal-400' : pct >= 40 ? 'bg-indigo-400' : 'bg-amber-400';
+
+                    // Dot segments (max 24 shown)
+                    const maxDots = Math.min(e.totalMonths, 24);
+                    const dots = Array.from({ length: maxDots }, (_, i) => {
+                        const filled = i < Math.round((paidCount / e.totalMonths) * maxDots);
+                        return `<span class="inline-block w-2 h-2 rounded-full ${filled ? 'bg-indigo-500' : 'bg-slate-200'}"></span>`;
+                    }).join('');
+                    const dotsHtml = e.totalMonths <= 24
+                        ? `<div class="flex flex-wrap gap-1 mt-1">${dots}</div>`
+                        : '';
+
+                    tenureHtml = `
+                        <div class="mt-2 pt-2 border-t border-slate-100 space-y-1.5">
+                            <div class="flex justify-between items-center text-[10px]">
+                                <span class="font-bold text-indigo-700">${done ? '🎉 Fully Paid!' : `${paidCount} of ${e.totalMonths} months paid`}</span>
+                                <span class="text-slate-400">${remaining > 0 ? `${remaining} remaining · ends ${endLabel}` : `Completed ${endLabel}`}</span>
+                            </div>
+                            <div class="w-full bg-slate-100 rounded-full h-2">
+                                <div class="${barCol} h-2 rounded-full transition-all duration-700" style="width:${pct}%"></div>
+                            </div>
+                            <div class="flex justify-between text-[9px] text-slate-400">
+                                <span>${pct.toFixed(0)}% complete</span>
+                                <span>${fRup(e.amount * remaining)} left in total</span>
+                            </div>
+                            ${dotsHtml}
+                        </div>`;
+                } else if (e.totalMonths) {
+                    // Has total months but no start month — still show paid count
+                    const paidCount = txs.filter(t => t.emiRefId === e.id).length;
+                    const remaining = Math.max(e.totalMonths - paidCount, 0);
+                    const pct       = Math.min((paidCount / e.totalMonths) * 100, 100);
+                    const done      = paidCount >= e.totalMonths;
+                    const barCol = done ? 'bg-emerald-500' : pct >= 75 ? 'bg-teal-400' : pct >= 40 ? 'bg-indigo-400' : 'bg-amber-400';
+                    tenureHtml = `
+                        <div class="mt-2 pt-2 border-t border-slate-100 space-y-1.5">
+                            <div class="flex justify-between items-center text-[10px]">
+                                <span class="font-bold text-indigo-700">${done ? '🎉 Fully Paid!' : `${paidCount} of ${e.totalMonths} months paid`}</span>
+                                <span class="text-slate-400">${remaining > 0 ? `${remaining} months remaining` : 'Completed'}</span>
+                            </div>
+                            <div class="w-full bg-slate-100 rounded-full h-2">
+                                <div class="${barCol} h-2 rounded-full transition-all duration-700" style="width:${pct}%"></div>
+                            </div>
+                            <div class="flex justify-between text-[9px] text-slate-400">
+                                <span>${pct.toFixed(0)}% complete</span>
+                                <span>${fRup(e.amount * remaining)} left in total</span>
+                            </div>
+                        </div>`;
+                }
+
+                // ── Edit tenure inline ──
+                const editTenureBtn = `<button onclick="openEmiTenureEdit(${e.id})" title="Edit Tenure" class="text-slate-300 hover:text-indigo-500 transition-colors"><i class="fa-solid fa-pen-to-square text-xs"></i></button>`;
+
                 const item = document.createElement('div');
-                item.className = "flex justify-between items-center bg-white border border-slate-100 p-3 rounded-xl text-xs shadow-sm";
+                item.className = "bg-white border border-slate-100 p-3 rounded-xl text-xs shadow-sm space-y-1";
                 item.innerHTML = `
-                    <div>
-                        <div class="flex items-center gap-2 flex-wrap">
-                            <p class="font-bold text-slate-800 text-sm">${e.name}</p>
-                            <span class="px-2 py-0.5 text-[10px] font-bold rounded-full ${paid ? 'bg-teal-50 text-teal-700 border border-teal-200' : 'bg-amber-50 text-amber-700 border border-amber-200'}">${paid ? '✓ Paid' : '⏳ Pending'}</span>
-                            ${countdownBadge}
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <p class="font-bold text-slate-800 text-sm">${e.name}</p>
+                                <span class="px-2 py-0.5 text-[10px] font-bold rounded-full ${paid ? 'bg-teal-50 text-teal-700 border border-teal-200' : 'bg-amber-50 text-amber-700 border border-amber-200'}">${paid ? '✓ Paid' : '⏳ Pending'}</span>
+                                ${countdownBadge}
+                            </div>
+                            <p class="text-slate-500 text-[10px] mt-0.5">Day ${e.day} of month${e.startMonth ? ' · Started ' + new Date(e.startMonth + '-01').toLocaleDateString('en-IN',{month:'short',year:'numeric'}) : ''}</p>
                         </div>
-                        <p class="text-slate-500 text-[10px] mt-0.5">Day ${e.day} of month</p>
+                        <div class="flex items-center gap-2">
+                            <p class="font-bold text-slate-800 text-sm">${fRup(e.amount)}</p>
+                            ${!paid ? `<button onclick="payEmiDirectly(${e.id})" class="text-emerald-600 hover:text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg font-bold text-[10px]">Pay</button>` : ''}
+                            ${editTenureBtn}
+                            <button onclick="delItem('emi',${e.id})" class="text-slate-300 hover:text-rose-600"><i class="fa-solid fa-trash-can"></i></button>
+                        </div>
                     </div>
-                    <div class="flex items-center gap-3">
-                        <p class="font-bold text-slate-800 text-sm">${fRup(e.amount)}</p>
-                        ${!paid ? `<button onclick="payEmiDirectly(${e.id})" class="text-emerald-600 hover:text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg font-bold text-[10px]">Pay</button>` : ''}
-                        <button onclick="delItem('emi',${e.id})" class="text-slate-300 hover:text-rose-600"><i class="fa-solid fa-trash-can"></i></button>
-                    </div>`;
+                    ${tenureHtml}`;
                 box.appendChild(item);
             });
         }
@@ -1083,6 +1258,34 @@
                 const pct = g.target > 0 ? Math.min(((g.saved || 0) / g.target) * 100, 100) : 0;
                 const remaining = g.target - (g.saved || 0);
                 const barColor = pct >= 100 ? 'bg-emerald-500' : pct >= 60 ? 'bg-teal-400' : pct >= 30 ? 'bg-amber-400' : 'bg-rose-400';
+
+                // Merge topupLog + withdrawalLog for a unified recent activity feed
+                const allLogs = [
+                    ...(g.topupLog || []).map(l => ({ ...l, kind: l.amount < 0 ? 'spent' : 'topup' })),
+                    ...(g.withdrawalLog || []).map(l => ({ ...l, kind: 'withdraw' }))
+                ].sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 4);
+
+                const logHtml = allLogs.length ? `
+                    <div class="mt-2 pt-2 border-t border-slate-100 space-y-1">
+                        ${allLogs.map(l => {
+                            const isTopup    = l.kind === 'topup';
+                            const isSpent    = l.kind === 'spent';
+                            const isWithdraw = l.kind === 'withdraw';
+                            const icon  = isTopup ? '💳' : isSpent ? '🛍️' : '🔻';
+                            const label = isTopup ? 'Top-up' : isSpent ? 'Spent' : 'Withdraw';
+                            const color = isTopup ? 'text-emerald-600' : isSpent ? 'text-rose-500' : 'text-amber-600';
+                            const sign  = isTopup ? '+' : '';
+                            const amt   = isWithdraw ? l.amount : l.amount;
+                            const dateStr = new Date(l.date).toLocaleDateString('en-IN',{day:'2-digit',month:'short'});
+                            return `<div class="flex justify-between text-[10px] text-slate-400 items-center">
+                                <span>${icon} ${label}${l.reason ? ` <span class="italic">(${l.reason})</span>` : ''}</span>
+                                <span class="${color} font-bold">${sign}${fRup(isWithdraw ? -l.amount : l.amount)}</span>
+                                <span>${dateStr}</span>
+                            </div>`;
+                        }).join('')}
+                    </div>` : '';
+
+                const hasSaved = (g.saved || 0) > 0;
                 const card = document.createElement('div');
                 card.className = "bg-white border border-slate-200 rounded-2xl p-4 shadow-sm space-y-3";
                 card.innerHTML = `
@@ -1103,16 +1306,18 @@
                         <div class="${barColor} h-3 rounded-full transition-all duration-700" style="width:${pct}%"></div>
                     </div>
                     <div class="flex justify-between items-center">
-                        <div class="flex items-center gap-2">
+                        <div class="flex items-center gap-2 flex-wrap">
                             <span class="text-xs text-slate-500">Saved: <strong class="text-slate-700">${fRup(g.saved || 0)}</strong></span>
-                            <div class="flex gap-1">
-                                <button onclick="addToGoal(${g.id}, 500)" class="text-[10px] bg-emerald-50 border border-emerald-200 text-emerald-700 px-2 py-0.5 rounded-lg font-bold hover:bg-emerald-100">+₹500</button>
-                                <button onclick="addToGoal(${g.id}, 1000)" class="text-[10px] bg-emerald-50 border border-emerald-200 text-emerald-700 px-2 py-0.5 rounded-lg font-bold hover:bg-emerald-100">+₹1K</button>
-                                <button onclick="promptAddToGoal(${g.id})" class="text-[10px] bg-slate-100 border border-slate-200 text-slate-600 px-2 py-0.5 rounded-lg font-bold hover:bg-slate-200">+Custom</button>
+                            <div class="flex gap-1 flex-wrap">
+                                <button onclick="addToGoalWithLog(${g.id}, 500)"  class="text-[10px] bg-emerald-50 border border-emerald-200 text-emerald-700 px-2 py-0.5 rounded-lg font-bold hover:bg-emerald-100">+₹500</button>
+                                <button onclick="addToGoalWithLog(${g.id}, 1000)" class="text-[10px] bg-emerald-50 border border-emerald-200 text-emerald-700 px-2 py-0.5 rounded-lg font-bold hover:bg-emerald-100">+₹1K</button>
+                                <button onclick="promptAddToGoalEnhanced(${g.id})" class="text-[10px] bg-slate-100 border border-slate-200 text-slate-600 px-2 py-0.5 rounded-lg font-bold hover:bg-slate-200">+Custom</button>
+                                ${hasSaved ? `<button onclick="openWithdrawModal(${g.id})" class="text-[10px] bg-amber-50 border border-amber-300 text-amber-700 px-2 py-0.5 rounded-lg font-bold hover:bg-amber-100 flex items-center gap-1"><i class="fa-solid fa-arrow-up-from-bracket text-[9px]"></i> Withdraw</button>` : ''}
                             </div>
                         </div>
                         <button onclick="delItem('goal',${g.id})" class="text-slate-300 hover:text-rose-600 text-xs"><i class="fa-solid fa-trash-can"></i></button>
-                    </div>`;
+                    </div>
+                    ${logHtml}`;
                 box.appendChild(card);
             });
         }
@@ -1146,6 +1351,45 @@
                 updateAll();
             }
         }
+
+        // ── EMI Tenure inline edit ──
+        let _editEmiId = null;
+
+        function openEmiTenureEdit(id) {
+            const e = emis.find(e => e.id === id);
+            if (!e) return;
+            _editEmiId = id;
+            document.getElementById('emi-edit-name').textContent  = e.name;
+            document.getElementById('emi-edit-months').value      = e.totalMonths || '';
+            document.getElementById('emi-edit-start').value       = e.startMonth || '';
+            document.getElementById('emi-tenure-modal').classList.remove('hidden');
+            setTimeout(() => document.getElementById('emi-edit-months').focus(), 80);
+        }
+
+        function closeEmiTenureModal(ev) {
+            if (ev && ev.target !== document.getElementById('emi-tenure-modal')) return;
+            document.getElementById('emi-tenure-modal').classList.add('hidden');
+            _editEmiId = null;
+        }
+
+        function saveEmiTenure() {
+            const e = emis.find(e => e.id === _editEmiId);
+            if (!e) return;
+            const months = parseInt(document.getElementById('emi-edit-months').value) || null;
+            const start  = document.getElementById('emi-edit-start').value || null;
+            e.totalMonths = months;
+            e.startMonth  = start;
+            document.getElementById('emi-tenure-modal').classList.add('hidden');
+            _editEmiId = null;
+            updateAll();
+        }
+
+        document.addEventListener('keydown', (ev) => {
+            if (ev.key === 'Escape') {
+                const m = document.getElementById('emi-tenure-modal');
+                if (m && !m.classList.contains('hidden')) { m.classList.add('hidden'); _editEmiId = null; }
+            }
+        });
 
         function delItem(type, id) {
             if (type === 'tx') txs = txs.filter(x => x.id !== id);
@@ -1234,20 +1478,272 @@
         }
 
         // ============================================================
+        // POPULATE DYNAMIC CATEGORY DROPDOWNS
+        // ============================================================
+        function populateCategoryDropdowns() {
+            const cats = getAllCats();
+            const ids = ['tx-cat'];
+            ids.forEach(id => {
+                const sel = document.getElementById(id);
+                if (!sel) return;
+                const prev = sel.value;
+                sel.innerHTML = cats.map(c => `<option value="${c.name}">${c.emoji} ${c.name}</option>`).join('');
+                if (prev) sel.value = prev;
+            });
+            // Filter dropdown
+            const fc = document.getElementById('filter-cat');
+            if (fc) {
+                const prev = fc.value;
+                fc.innerHTML = '<option value="">All Categories</option>' + cats.map(c => `<option value="${c.name}">${c.emoji} ${c.name}</option>`).join('');
+                if (prev) fc.value = prev;
+            }
+        }
+
+        // ============================================================
+        // FEATURE: CUSTOM CATEGORIES
+        // ============================================================
+        const EMOJI_SET = ['🍕','🍜','🍔','🧃','🥗','🏋️','🛍️','💊','🚌','⛽','🎮','📚','💈','🐾','🌿','🧴','🔧','🎁','💡','🏖️','🎵','🎨','🧹','🏡','💻','📷','⚽','🧘','🌙','☀️','🍺','🎂','🌸','🏷️','💸','🪙','🎯','🧾','📞','🚿'];
+
+        function initEmojiPicker() {
+            const picker = document.getElementById('emoji-picker');
+            if (!picker) return;
+            picker.innerHTML = EMOJI_SET.map(e => `<button type="button" onclick="selectEmoji('${e}')" class="text-xl hover:scale-125 transition-transform w-8 h-8 flex items-center justify-center rounded-lg hover:bg-emerald-50">${e}</button>`).join('');
+        }
+
+        function selectEmoji(emoji) {
+            if (!emoji) return;
+            document.getElementById('cat-emoji').value = emoji;
+            document.getElementById('cat-emoji-preview').textContent = emoji;
+        }
+
+        function renderCatList() {
+            const box = document.getElementById('cat-list');
+            if (!box) return;
+            const all = getAllCats();
+            box.innerHTML = all.map(c => {
+                const isCustom = customCategories.some(cc => cc.id === c.id);
+                return `<div class="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5">
+                    <span class="text-xl">${c.emoji}</span>
+                    <span class="text-sm font-medium text-slate-700 flex-1">${c.name}</span>
+                    ${isCustom ? `<button onclick="delCustomCat(${c.id})" class="text-slate-300 hover:text-rose-500 text-xs"><i class="fa-solid fa-trash-can"></i></button>` : '<span class="text-[9px] text-slate-300 font-bold">BUILT-IN</span>'}
+                </div>`;
+            }).join('');
+        }
+
+        function delCustomCat(id) {
+            customCategories = customCategories.filter(c => c.id !== id);
+            populateCategoryDropdowns();
+            renderCatList();
+            renderBudgetList();
+            updateAll();
+        }
+
+        // ============================================================
+        // FEATURE: MONTH-OVER-MONTH COMPARISON
+        // ============================================================
+        function renderMoMComparison() {
+            const now = new Date();
+            const curM = now.getMonth(), curY = now.getFullYear();
+            let lastM = curM - 1, lastY = curY;
+            if (lastM < 0) { lastM = 11; lastY--; }
+
+            const cats = getAllCats();
+            const monthNames = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
+            function spentInMonth(cat, m, y) {
+                return txs.filter(t => {
+                    if (t.type !== 'expense' || t.cat !== cat) return false;
+                    const d = new Date(t.date || t.id);
+                    return d.getMonth() === m && d.getFullYear() === y;
+                }).reduce((s,t) => s + t.amount, 0);
+            }
+
+            const rows = cats.map(c => {
+                const cur = spentInMonth(c.name, curM, curY);
+                const last = spentInMonth(c.name, lastM, lastY);
+                if (cur === 0 && last === 0) return null;
+                let pct = last === 0 ? (cur > 0 ? 100 : 0) : ((cur - last) / last) * 100;
+                const up = pct > 0;
+                const arrow = pct === 0 ? '→' : up ? '↑' : '↓';
+                const color = pct === 0 ? 'text-slate-500' : up ? 'text-rose-600' : 'text-emerald-600';
+                const bg = pct === 0 ? 'bg-slate-50' : up ? 'bg-rose-50' : 'bg-emerald-50';
+                return `<div class="${bg} border border-slate-100 rounded-xl px-3 py-2 flex justify-between items-center">
+                    <div class="flex items-center gap-2">
+                        <span class="text-base">${c.emoji}</span>
+                        <div>
+                            <p class="text-xs font-bold text-slate-700">${c.name}</p>
+                            <p class="text-[10px] text-slate-400">${monthNames[lastM]}: ${fRup(last)} → ${monthNames[curM]}: ${fRup(cur)}</p>
+                        </div>
+                    </div>
+                    <span class="font-black text-sm ${color}">${arrow} ${Math.abs(pct).toFixed(0)}%</span>
+                </div>`;
+            }).filter(Boolean);
+
+            const html = rows.length ? rows.join('') : '<p class="text-xs text-slate-400 py-4 text-center">Not enough data for comparison yet.</p>';
+            ['mom-comparison', 'mom-comparison-dash'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.innerHTML = html;
+            });
+        }
+
+        // ============================================================
+        // GOAL-LINKED EXPENSE HELPERS
+        // ============================================================
+        function toggleGoalLinkDropdown() {
+            const checked = document.getElementById('tx-from-goal').checked;
+            const wrap = document.getElementById('tx-goal-picker-wrap');
+            if (checked) {
+                populateGoalPicker();
+                wrap.classList.remove('hidden');
+            } else {
+                wrap.classList.add('hidden');
+            }
+        }
+
+        function populateGoalPicker() {
+            const sel = document.getElementById('tx-goal-picker');
+            if (!sel) return;
+            const prev = sel.value;
+            sel.innerHTML = '<option value="">— Select Goal to Deduct From —</option>' +
+                goals.filter(g => (g.saved || 0) > 0).map(g =>
+                    `<option value="${g.id}">${g.icon || '🎯'} ${g.name} (Saved: ${fRup(g.saved || 0)})</option>`
+                ).join('');
+            if (prev) sel.value = prev;
+        }
+
+        // ============================================================
+        // FEATURE: GOAL TOP-UP LOG (enhanced goal saving with history)
+        // ============================================================
+        function addToGoalWithLog(id, amount) {
+            const g = goals.find(g => g.id === id);
+            if (!g) return;
+            g.saved = (g.saved || 0) + amount;
+            if (!g.topupLog) g.topupLog = [];
+            g.topupLog.push({ amount, date: todayISO() });
+            updateAll();
+        }
+
+        function promptAddToGoalEnhanced(id) {
+            const amt = parseFloat(prompt('Enter amount to add to goal (₹):'));
+            if (!isNaN(amt) && amt > 0) addToGoalWithLog(id, amt);
+        }
+
+        // ============================================================
+        // FEATURE: WITHDRAW FROM GOAL
+        // ============================================================
+        let _withdrawGoalId = null;
+
+        function openWithdrawModal(goalId) {
+            const g = goals.find(g => g.id === goalId);
+            if (!g) return;
+            _withdrawGoalId = goalId;
+
+            document.getElementById('wm-title').textContent     = `Withdraw from "${g.name}"`;
+            document.getElementById('wm-icon').textContent      = g.icon || '🎯';
+            document.getElementById('wm-goal-name').textContent = g.name;
+            document.getElementById('wm-available').textContent = fRup(g.saved || 0);
+            document.getElementById('wm-amount').value          = '';
+            document.getElementById('wm-reason').value          = '';
+            document.getElementById('wm-error').classList.add('hidden');
+
+            document.getElementById('withdraw-modal').classList.remove('hidden');
+            setTimeout(() => document.getElementById('wm-amount').focus(), 100);
+        }
+
+        function closeWithdrawModal(e) {
+            // If called from backdrop click, only close if target is the backdrop itself
+            if (e && e.target !== document.getElementById('withdraw-modal')) return;
+            document.getElementById('withdraw-modal').classList.add('hidden');
+            _withdrawGoalId = null;
+        }
+
+        function setWithdrawAmt(amount) {
+            document.getElementById('wm-amount').value = amount;
+            document.getElementById('wm-error').classList.add('hidden');
+        }
+
+        function setWithdrawAll() {
+            const g = goals.find(g => g.id === _withdrawGoalId);
+            if (g) setWithdrawAmt(g.saved || 0);
+        }
+
+        function confirmWithdraw() {
+            const g = goals.find(g => g.id === _withdrawGoalId);
+            if (!g) return;
+
+            const amt    = parseFloat(document.getElementById('wm-amount').value);
+            const reason = document.getElementById('wm-reason').value.trim();
+            const errEl  = document.getElementById('wm-error');
+
+            // Validation
+            if (isNaN(amt) || amt <= 0) {
+                errEl.textContent = 'Please enter a valid amount greater than ₹0.';
+                errEl.classList.remove('hidden'); return;
+            }
+            if (amt > (g.saved || 0)) {
+                errEl.textContent = `Amount exceeds available balance of ${fRup(g.saved || 0)}.`;
+                errEl.classList.remove('hidden'); return;
+            }
+
+            // Apply withdrawal
+            g.saved = (g.saved || 0) - amt;
+            if (!g.withdrawalLog) g.withdrawalLog = [];
+            g.withdrawalLog.push({ amount: amt, date: todayISO(), reason: reason || null });
+
+            document.getElementById('withdraw-modal').classList.add('hidden');
+            _withdrawGoalId = null;
+            updateAll();
+        }
+
+        // Close modal on Escape key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                const modal = document.getElementById('withdraw-modal');
+                if (!modal.classList.contains('hidden')) {
+                    modal.classList.add('hidden');
+                    _withdrawGoalId = null;
+                }
+            }
+        });
+
+        // ============================================================
         // FORM SUBMISSIONS
         // ============================================================
         document.getElementById('form-transaction').addEventListener('submit', (e) => {
             e.preventDefault();
+            const txType = document.querySelector('input[name="txType"]:checked').value;
+            const amount = parseFloat(document.getElementById('tx-amount').value);
+            const fromGoalChecked = document.getElementById('tx-from-goal').checked;
+            const goalPickerId = document.getElementById('tx-goal-picker').value;
+
+            // Handle goal-linked deduction
+            let linkedGoalId = null;
+            if (txType === 'expense' && fromGoalChecked && goalPickerId) {
+                const linkedGoal = goals.find(g => g.id == goalPickerId);
+                if (linkedGoal) {
+                    const deductAmount = Math.min(amount, linkedGoal.saved || 0);
+                    linkedGoal.saved = (linkedGoal.saved || 0) - deductAmount;
+                    if (!linkedGoal.topupLog) linkedGoal.topupLog = [];
+                    linkedGoal.topupLog.push({ amount: -deductAmount, date: todayISO(), note: 'Spent from goal' });
+                    linkedGoalId = linkedGoal.id;
+                }
+            }
+
             txs.push({
                 id: Date.now(),
-                type: document.querySelector('input[name="txType"]:checked').value,
+                type: txType,
                 desc: document.getElementById('tx-desc').value.trim(),
-                amount: parseFloat(document.getElementById('tx-amount').value),
+                amount,
                 cat: document.getElementById('tx-cat').value,
-                date: todayISO()
+                date: todayISO(),
+                ...(linkedGoalId ? { goalRef: linkedGoalId } : {})
             });
             document.getElementById('tx-desc').value = '';
             document.getElementById('tx-amount').value = '';
+            // Reset goal-link state
+            document.getElementById('tx-from-goal').checked = false;
+            document.getElementById('tx-goal-picker-wrap').classList.add('hidden');
+            document.getElementById('tx-goal-picker').value = '';
             updateAll();
         });
 
@@ -1269,14 +1765,20 @@
 
         document.getElementById('form-emi').addEventListener('submit', (e) => {
             e.preventDefault();
+            const totalMonths = parseInt(document.getElementById('emi-total-months').value) || null;
+            const startMonth  = document.getElementById('emi-start-month').value || null; // "YYYY-MM"
             emis.push({
                 id: Date.now(),
                 name: document.getElementById('emi-name').value.trim(),
                 amount: parseFloat(document.getElementById('emi-amount').value),
-                day: document.getElementById('emi-day').value
+                day: document.getElementById('emi-day').value,
+                totalMonths,
+                startMonth
             });
             document.getElementById('emi-name').value = '';
             document.getElementById('emi-amount').value = '';
+            document.getElementById('emi-total-months').value = '';
+            document.getElementById('emi-start-month').value = '';
             updateAll();
         });
 
@@ -1301,11 +1803,28 @@
                 name: document.getElementById('goal-name').value.trim(),
                 target: parseFloat(document.getElementById('goal-target').value),
                 saved: parseFloat(document.getElementById('goal-saved').value) || 0,
-                icon: document.getElementById('goal-icon').value
+                icon: document.getElementById('goal-icon').value,
+                topupLog: []
             });
             document.getElementById('goal-name').value = '';
             document.getElementById('goal-target').value = '';
             document.getElementById('goal-saved').value = '';
+            updateAll();
+        });
+
+        document.getElementById('form-custom-cat').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const name = document.getElementById('cat-name').value.trim();
+            const emoji = document.getElementById('cat-emoji').value || '🏷️';
+            if (getAllCats().some(c => c.name.toLowerCase() === name.toLowerCase())) {
+                alert('A category with that name already exists!');
+                return;
+            }
+            customCategories.push({ id: Date.now(), emoji, name });
+            document.getElementById('cat-name').value = '';
+            selectEmoji('🏷️');
+            populateCategoryDropdowns();
+            renderCatList();
             updateAll();
         });
 
@@ -1331,6 +1850,10 @@
             daySelect.appendChild(opt);
         }
 
+        // Init emoji picker and category dropdowns
+        initEmojiPicker();
+        populateCategoryDropdowns();
+
         loadCardMetaInputs();
 
         function waitForFirebase() {
@@ -1342,5 +1865,91 @@
         }
         waitForFirebase();
     </script>
+
+    <!-- ==================== WITHDRAW FROM GOAL MODAL ==================== -->
+    <div id="withdraw-modal" class="fixed inset-0 z-[999] flex items-center justify-center bg-black/50 backdrop-blur-sm hidden" onclick="closeWithdrawModal(event)">
+        <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-sm mx-4 p-6 space-y-4" onclick="event.stopPropagation()">
+            <!-- Header -->
+            <div class="flex items-center justify-between">
+                <div>
+                    <h3 class="text-base font-bold text-slate-800" id="wm-title">Withdraw from Goal</h3>
+                    <p class="text-[10px] text-slate-400 mt-0.5">This reverses a top-up — it does <strong>not</strong> log a cash expense.</p>
+                </div>
+                <button onclick="closeWithdrawModal()" class="text-slate-400 hover:text-slate-600 text-xl font-black leading-none">&times;</button>
+            </div>
+
+            <!-- Goal balance pill -->
+            <div class="flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+                <span id="wm-icon" class="text-2xl">🎯</span>
+                <div>
+                    <p class="text-xs font-bold text-slate-700" id="wm-goal-name">Goal Name</p>
+                    <p class="text-[10px] text-slate-400">Available to withdraw: <strong id="wm-available" class="text-amber-700">₹0</strong></p>
+                </div>
+            </div>
+
+            <!-- Quick amount buttons -->
+            <div>
+                <p class="text-[10px] font-semibold text-slate-400 uppercase mb-1.5">Quick Amount</p>
+                <div class="flex gap-1.5 flex-wrap">
+                    <button type="button" onclick="setWithdrawAmt(100)"  class="text-[11px] bg-slate-100 border border-slate-200 text-slate-700 px-3 py-1 rounded-lg font-bold hover:bg-amber-50 hover:border-amber-300 hover:text-amber-700 transition-colors">₹100</button>
+                    <button type="button" onclick="setWithdrawAmt(500)"  class="text-[11px] bg-slate-100 border border-slate-200 text-slate-700 px-3 py-1 rounded-lg font-bold hover:bg-amber-50 hover:border-amber-300 hover:text-amber-700 transition-colors">₹500</button>
+                    <button type="button" onclick="setWithdrawAmt(1000)" class="text-[11px] bg-slate-100 border border-slate-200 text-slate-700 px-3 py-1 rounded-lg font-bold hover:bg-amber-50 hover:border-amber-300 hover:text-amber-700 transition-colors">₹1K</button>
+                    <button type="button" onclick="setWithdrawAll()"     class="text-[11px] bg-amber-100 border border-amber-300 text-amber-800 px-3 py-1 rounded-lg font-bold hover:bg-amber-200 transition-colors">All</button>
+                </div>
+            </div>
+
+            <!-- Amount input -->
+            <div>
+                <label class="block text-xs font-semibold text-slate-500 uppercase mb-1">Withdrawal Amount (₹)</label>
+                <input type="number" id="wm-amount" placeholder="Enter amount" min="1"
+                    class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-300">
+                <p id="wm-error" class="text-[10px] text-rose-500 mt-1 hidden"></p>
+            </div>
+
+            <!-- Reason input -->
+            <div>
+                <label class="block text-xs font-semibold text-slate-500 uppercase mb-1">Reason <span class="text-slate-300 font-normal">(optional)</span></label>
+                <input type="text" id="wm-reason" placeholder="e.g., Changed plans, Emergency"
+                    class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-300">
+            </div>
+
+            <!-- Action buttons -->
+            <div class="flex gap-2 pt-1">
+                <button onclick="closeWithdrawModal()" class="flex-1 py-2.5 border border-slate-200 text-slate-600 font-semibold text-sm rounded-xl hover:bg-slate-50">Cancel</button>
+                <button onclick="confirmWithdraw()" class="flex-1 py-2.5 bg-amber-500 hover:bg-amber-600 text-white font-semibold text-sm rounded-xl shadow-sm transition-colors flex items-center justify-center gap-1.5">
+                    <i class="fa-solid fa-arrow-up-from-bracket text-xs"></i> Withdraw
+                </button>
+            </div>
+        </div>
+    </div>
+    <!-- ==================== EMI TENURE EDIT MODAL ==================== -->
+    <div id="emi-tenure-modal" class="fixed inset-0 z-[998] flex items-center justify-center bg-black/50 backdrop-blur-sm hidden" onclick="closeEmiTenureModal(event)">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-xs mx-4 p-6 space-y-4" onclick="event.stopPropagation()">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h3 class="text-base font-bold text-slate-800">Edit Tenure</h3>
+                    <p class="text-[10px] text-slate-400 mt-0.5" id="emi-edit-name"></p>
+                </div>
+                <button onclick="document.getElementById('emi-tenure-modal').classList.add('hidden')" class="text-slate-400 hover:text-slate-600 text-xl font-black leading-none">&times;</button>
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-slate-500 uppercase mb-1">Total Months</label>
+                <input type="number" id="emi-edit-months" placeholder="e.g., 24" min="1" max="360"
+                    class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-indigo-500">
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-slate-500 uppercase mb-1">Start Month</label>
+                <input type="month" id="emi-edit-start"
+                    class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-indigo-500">
+            </div>
+            <div class="flex gap-2 pt-1">
+                <button onclick="document.getElementById('emi-tenure-modal').classList.add('hidden')" class="flex-1 py-2.5 border border-slate-200 text-slate-600 font-semibold text-sm rounded-xl hover:bg-slate-50">Cancel</button>
+                <button onclick="saveEmiTenure()" class="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm rounded-xl shadow-sm flex items-center justify-center gap-1.5">
+                    <i class="fa-solid fa-floppy-disk text-xs"></i> Save
+                </button>
+            </div>
+        </div>
+    </div>
+
 </body>
 </html>
